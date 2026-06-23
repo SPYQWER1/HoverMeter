@@ -1,0 +1,28 @@
+Task 4 - DeepSeek API Client Error Handling Evidence
+=====================================================
+Date: 2025-06-23
+
+Error handling scenarios (verified by code review):
+
+1. Empty API key:
+   - Input: get_balance("")
+   - Result: Err("API key must not be empty")
+   - No HTTP request made, immediate early return
+
+2. Invalid API key (network/HTTP error):
+   - Input: get_balance("invalid_key")
+   - Result: Err("DeepSeek API returned HTTP 401: ...")
+   - reqwest sends the request, DeepSeek returns 401 Unauthorized
+   - Non-success status code triggers error with status and body
+
+3. Network error (no internet):
+   - Input: get_balance("sk-valid-key")
+   - Result: Err("HTTP request failed: ...")
+   - reqwest returns error (connection refused, DNS failure, etc.)
+
+4. Malformed JSON response:
+   - If DeepSeek returns non-JSON on success status (unlikely)
+   - Result: Err("Failed to parse DeepSeek response: ...")
+
+All error paths return Err(String) - no panics, no unwraps in production code.
+The Tauri command wraps the async function and forwards errors to the frontend.

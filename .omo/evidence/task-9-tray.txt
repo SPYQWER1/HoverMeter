@@ -1,0 +1,59 @@
+Task 9: System Tray Implementation Evidence
+=============================================
+Date: 2025-06-23
+
+## Implementation (src-tauri/src/lib.rs)
+
+### Tray Menu Items
+- Show Widget (id: "show") -> shows main window + sets focus
+- Settings (id: "settings") -> shows main window + emits "show-settings" event + sets focus
+- Separator (PredefinedMenuItem::separator)
+- Quit (id: "quit") -> app.exit(0)
+
+### Tray Left-Click Behavior
+- show_menu_on_left_click(false) set so left-click does NOT open context menu
+- on_tray_icon_event handler matches TrayIconEvent::Click with MouseButton::Left + MouseButtonState::Up
+- Toggles main window: if visible -> hide(), if hidden -> show() + set_focus()
+
+### Close-to-Tray
+- on_window_event handler matches WindowEvent::CloseRequested
+- Calls api.prevent_close() to prevent actual window close
+- Calls window.hide() to hide window to tray
+- App continues running in system tray
+
+### Tray Icon
+- ID: "main-tray"
+- Icon: app.default_window_icon() (from tauri.conf.json bundle icons)
+- Tooltip: "HoverMeter"
+
+### Imports Added
+- tauri::menu::{Menu, MenuItem, PredefinedMenuItem}
+- tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
+- tauri::{Emitter, Manager, WindowEvent}
+
+### Plugins (all preserved, no removals)
+- tauri_plugin_opener::init()
+- tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None)
+- tauri_plugin_window_state::Builder::default().build()
+- tauri_plugin_positioner::init()
+
+### Commands (all preserved, no removals)
+- greet, deepseek::get_deepseek_balance, volcano::get_volcano_usage
+- storage::save_credentials, storage::load_credentials
+- storage::save_settings, storage::load_settings
+
+## Capabilities (src-tauri/capabilities/default.json)
+Added: "core:tray:default" permission
+(Enables tray icon API access from the frontend if needed)
+
+## Verification
+cargo check --manifest-path src-tauri/Cargo.toml
+Result: PASS - zero errors, zero warnings
+  Compiling hovermeter v0.1.0 (/home/spy/HoverMeter/src-tauri)
+  Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.23s
+
+## Note
+- Runtime visual QA (tray icon visibility, menu interaction) deferred due to
+  GTK dev-link limitations on this system (pre-existing issue from Task 1).
+- The "show-settings" event is emitted to the main window; Task 7/8 frontend
+  should listen for this event via Tauri's `listen()` API to open the Settings panel.

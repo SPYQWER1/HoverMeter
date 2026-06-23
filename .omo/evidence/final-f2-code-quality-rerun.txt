@@ -1,0 +1,164 @@
+# F2 Code Quality Review (Re-run after camelCase revert)
+# Date: 2025-06-23
+# Reviewer: Sisyphus-Junior
+
+## Build Results
+
+### cargo check
+COMMAND: cargo check --manifest-path src-tauri/Cargo.toml
+ENV: PATH="/tmp/pkgconf-install/usr/bin:$HOME/.cargo/bin:$PATH"
+      LD_LIBRARY_PATH="/tmp/pkgconf-install/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
+      PKG_CONFIG_PATH="/tmp/pkgconf-install/usr/lib/x86_64-linux-gnu/pkgconfig:/tmp/pkgconf-install/usr/share/pkgconfig:$PKG_CONFIG_PATH"
+RESULT: PASS
+OUTPUT: Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.35s
+ERRORS: 0
+WARNINGS: 0
+
+### npm run build
+COMMAND: npm run build
+RESULT: PASS
+OUTPUT: tsc && vite build — 41 modules transformed, built in 1.32s
+        dist/index.html 0.47 kB
+        dist/assets/index-BZbIknkJ.css 9.62 kB
+        dist/assets/index-BUtzPRlW.js 223.42 kB
+EXIT CODE: 0
+
+## camelCase Invoke Revert Review
+
+### src/App.tsx (lines 259-267)
+  invoke("save_credentials", {
+    volcanoAccessKey: settings.volcano_access_key,
+    volcanoSecretKey: settings.volcano_secret_key,
+    deepseekApiKey: settings.deepseek_api_key,
+  });
+  invoke("save_settings", {
+    refreshInterval: settings.refresh_interval,
+    opacity: settings.opacity,
+  });
+VERDICT: Correct. Tauri v2 converts Rust snake_case args to JS camelCase.
+  AppSettings type uses snake_case field names (frontend type), invoke args
+  use camelCase (Tauri convention). Consistent with learnings.md note
+  (line 394-398): "Rust snake_case command args -> JS camelCase invoke args".
+
+### src/hooks/useUsageData.ts (lines 66-68, 75-77)
+  invoke<DeepSeekBalance>("get_deepseek_balance", {
+    apiKey: creds.deepseek_key,
+  });
+VERDICT: Correct. `apiKey` is camelCase, matching the Rust `api_key` param.
+  Consistent with the established pattern.
+
+### New issues introduced by revert: NONE
+
+## Anti-Pattern Scan
+
+### as any / @ts-ignore / @ts-nocheck / @ts-expect-error
+SCOPE: src/
+RESULT: 0 matches — CLEAN
+
+### console.log / console.debug / console.info / console.warn
+SCOPE: src/
+RESULT: 0 matches — CLEAN
+
+### console.error (error logging in catch blocks)
+SCOPE: src/
+RESULT: 8 matches in src/App.tsx (lines 170, 189, 199, 208, 213, 247, 254, 273)
+VERDICT: ACCEPTABLE — all are error logging inside .catch() or try/catch
+  handlers. Not debug slop. Standard pattern for surfacing errors to dev
+  console in a Tauri app. No action required.
+
+### Empty catches
+SCOPE: src/
+PATTERN: catch\([^)]*\)\s*\{\s*\}
+RESULT: 0 matches — CLEAN
+
+### TODO / FIXME / XXX / HACK comments
+SCOPE: src/
+RESULT: 0 matches — CLEAN
+
+### Commented-out code
+SCOPE: src/
+PATTERN: ^\s*//\s*(import|const|let|function|export|await|return|if|for|while)
+RESULT: 0 matches — CLEAN
+
+### Rust anti-patterns (println! / dbg! / unwrap() / expect() / panic! / unimplemented! / todo!)
+SCOPE: src-tauri/src/
+RESULT: 8 matches across 2 files — ALL ACCEPTABLE:
+
+  v4_sign.rs:20  .expect("HMAC can take key of any size")
+    -> Production helper hmac_sha256(). Documented invariant of hmac crate
+       (new_from_slice accepts any key size). Legitimate.
+
+  v4_sign.rs:26  .expect("HMAC can take key of any size")
+    -> Production helper hmac_sha256_hex(). Same as above. Legitimate.
+
+  v4_sign.rs:34  .expect("Time went backwards")
+    -> Production helper utc_now_formatted(). On SystemTime::now()
+       .duration_since(UNIX_EPOCH). Standard pattern; requires system clock
+       to go backwards. Legitimate.
+
+  v4_sign.rs:151 .unwrap()  -> Inside #[test] fn test_sign_request_format.
+  v4_sign.rs:152 .unwrap()  -> Same test function. Test-only, acceptable.
+  v4_sign.rs:157 .unwrap()  -> Same test function. Test-only, acceptable.
+
+  lib.rs:48      .expect("default window icon missing")
+    -> TrayIconBuilder in .setup(). Fail-fast on startup config error.
+       Idiomatic.
+
+  lib.rs:104     .expect("error while running tauri application")
+    -> Standard tauri::Builder::run() result handling. Idiomatic.
+
+  No println! / dbg! / panic! / unimplemented! / todo! in production code.
+
+## LSP Diagnostics
+
+### src/App.tsx
+RESULT: No diagnostics found
+
+### src/hooks/useUsageData.ts
+RESULT: No diagnostics found
+
+### src-tauri/src/v4_sign.rs / lib.rs
+RESULT: Rust LSP server not installed (user previously declined installation).
+  cargo check (zero errors, zero warnings) compensates.
+
+## AI Slop Check
+
+- No excessive complexity (no object annotation chains, no if/elif variant chains)
+- No oversized modules (App.tsx 405 lines, useUsageData.ts 127 lines — both reasonable)
+- No performance equivalence slop (no redundant intermediate arrays/objects)
+- No dead code (all imports used, verified by tsc noUnusedLocals/noUnusedParameters)
+- No unnecessary abstractions (helpers are single-purpose, used)
+- No premature optimization / no over-engineering
+- Escape sequences used for non-ASCII glyphs (\u00D7, \u21BB, etc.) — source stays ASCII-clean
+
+## Files Reviewed
+
+Frontend (src/):
+  - App.tsx          — CLEAN (8 console.error in catch blocks: acceptable)
+  - hooks/useUsageData.ts — CLEAN
+  - Settings.tsx     — CLEAN (scanned via src/ glob)
+  - styles.css       — not applicable (CSS, no logic)
+  - types/index.ts   — CLEAN (scanned via src/ glob)
+  - main.tsx         — CLEAN (scanned via src/ glob)
+
+Backend (src-tauri/src/):
+  - lib.rs           — CLEAN (2 .expect(): idiomatic startup)
+  - v4_sign.rs       — CLEAN (3 .expect() legitimate invariants, 3 .unwrap() test-only)
+  - volcano.rs       — CLEAN (no anti-patterns matched)
+  - deepseek.rs      — CLEAN (no anti-patterns matched)
+  - storage.rs       — CLEAN (no anti-patterns matched)
+
+Total files reviewed: 11
+Files clean: 11
+Files with issues: 0
+
+## Summary
+
+Build: PASS | Lint: PASS | Files: 11 clean / 0 issues | VERDICT: APPROVE
+
+No new issues introduced by the camelCase revert. All invoke calls correctly
+use camelCase args per Tauri v2 convention. AppSettings type retains snake_case
+field names (frontend type, separate concern). All anti-pattern scans clean.
+Rust .expect()/.unwrap() calls are either test-only or document legitimate
+invariants. console.error calls are error logging in catch blocks, not debug
+slop.

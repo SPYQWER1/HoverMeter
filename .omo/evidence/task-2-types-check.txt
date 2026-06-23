@@ -1,0 +1,24 @@
+Task 2 — Type Definitions Verification
+========================================
+Date: 2025-06-23
+File: src/types/index.ts
+
+Verification: npx tsc --noEmit
+Result: PASS (exit code 0, no errors)
+
+Types defined:
+  - DeepSeekBalance        ✓
+  - BalanceInfo            ✓
+  - VolcanoUsage           ✓
+  - PeriodUsage            ✓ (label: "session" | "weekly" | "monthly")
+  - VolcanoPlan            ✓
+  - AppSettings            ✓
+  - GetBalanceResponse     ✓
+  - GetUsageResponse       ✓
+  - GetPlanResponse        ✓
+  - GetSettingsResponse    ✓
+  - SaveCredentialsRequest ✓
+  - SaveSettingsRequest    ✓
+  - CommandResult<T>       ✓
+
+All types exported, PeriodUsage.label is union type, no `any` used.

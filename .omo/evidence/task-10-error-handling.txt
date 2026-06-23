@@ -1,0 +1,22 @@
+Task 10 — Error handling verification
+=======================================
+
+Build: npm run build → exit 0, 40 modules transformed
+
+Error handling paths in useUsageData.ts:
+1. Volcano API failure → setError(msg), setLoading(false), setRefreshing(false)
+   - Volcano data stays null, DeepSeek may still succeed independently
+2. DeepSeek API failure → setError("DeepSeek: ..."), non-fatal
+   - Volcano data is preserved, only balance shows "unavailable"
+3. Credential load failure → DeepSeek balance not fetched, no error shown
+   - Graceful degradation: balance row shows "unavailable"
+4. No panics, no uncaught promises — all errors caught via try/catch
+
+UI error display:
+- .error-bar: red-tinted pill at top of widget body
+- .error-text: 9.5px, danger color, word-break for long messages
+- Error cleared on next successful fetch
+- Loading state shown during initial fetch (pulsing "Loading…" text)
+- Background refresh keeps existing data visible (refreshing flag, not loading)
+
+No crashes — all error paths return gracefully.

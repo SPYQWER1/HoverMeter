@@ -1,0 +1,10 @@
+   Compiling v4test v0.1.0 (/tmp/v4test)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.42s
+     Running `/tmp/v4test/target/debug/v4test`
+=== V4 Signature Format Verification ===
+
+Authorization header:
+HMAC-SHA256 Credential=test_ak/20260623/cn-beijing/ark/request, SignedHeaders=host;x-content-sha256;x-date, Signature=a66136470e1d0f99cd2add2d0dce1001870eb2f334424ff3ec6c577a892e8c4b
+
+Credential date: 20260623
+ALL CHECKS PASSED

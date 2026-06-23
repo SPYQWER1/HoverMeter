@@ -1,0 +1,37 @@
+Task 5 Volcano Engine API Client — Error Handling Verification
+====================================================================
+
+All error paths verified through code review and cargo check (compilation confirmed).
+
+Error Paths Implemented:
+-----------------------
+
+1. arkcli not installed / not on PATH:
+   - Detected via std::io::ErrorKind::NotFound
+   - Returns: "arkcli is not installed or not found on PATH. Install it from https://www.volcengine.com/docs/82379"
+
+2. arkcli non-zero exit code:
+   - Checked via output.status.success()
+   - Returns: "arkcli exited with status {code}: {stderr}"
+
+3. Invalid UTF-8 stdout:
+   - Checked via String::from_utf8(output.stdout)
+   - Returns: "arkcli output is not valid UTF-8: {error}"
+
+4. Invalid JSON (malformed):
+   - Checked via serde_json::from_str(&stdout)
+   - Returns: "Failed to parse arkcli JSON output: {serde error}"
+
+5. Missing coding-plan item:
+   - Checked via .find(|item| item.product == "coding-plan")
+   - Returns: "No coding-plan item found in arkcli output. Is your Coding Plan subscription active?"
+
+6. General I/O error (permission denied, etc.):
+   - Caught by .map_err() on Command::output()
+   - Returns: "Failed to run arkcli: {io error}"
+
+Verification:
+-------------
+- cargo check --manifest-path src-tauri/Cargo.toml: PASS (zero errors, zero warnings)
+- All error paths use Result<VolcanoUsage, String> — no panics, no unwraps in production paths
+- Error messages are user-friendly and actionable

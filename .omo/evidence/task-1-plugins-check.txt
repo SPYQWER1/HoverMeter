@@ -1,0 +1,51 @@
+=== Cargo.toml Plugins ===
+tauri-plugin-opener = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-positioner = "2"
+
+=== Tauri Features ===
+tauri-build = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
+serde = { version = "1", features = ["derive"] }
+
+=== package.json Plugins ===
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-autostart": "^2",
+    "@tauri-apps/plugin-window-state": "^2",
+    "@tauri-apps/plugin-positioner": "^2"
+
+=== Window Config ===
+title: HoverMeter
+width: 320
+height: 180
+alwaysOnTop: True
+transparent: True
+decorations: False
+skipTaskbar: True
+resizable: False
+visible: False
+center: True
+
+=== Capabilities ===
+core:default
+opener:default
+autostart:default
+window-state:default
+positioner:default
+
+=== npm run build ===
+
+> hovermeter@0.1.0 build
+> tsc && vite build
+
+vite v7.3.5 building client environment for production...
+transforming...
+✓ 32 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.47 kB │ gzip:  0.30 kB
+dist/assets/react-CHdo91hT.svg    4.13 kB │ gzip:  2.05 kB
+dist/assets/index-ZCvx-mwu.css    1.37 kB │ gzip:  0.65 kB
+dist/assets/index-Dy7oX8nd.js   194.41 kB │ gzip: 61.13 kB
+✓ built in 621ms

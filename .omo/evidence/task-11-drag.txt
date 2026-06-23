@@ -1,0 +1,40 @@
+Task 11: Window Drag Region Verification
+=========================================
+Date: 2025-06-23
+
+1. data-tauri-drag-region attribute presence
+---------------------------------------------
+Verified via grep in src/App.tsx:
+
+  Line 92: <div className="title-bar" data-tauri-drag-region>
+  Line 93: <div className="title-brand" data-tauri-drag-region>
+
+Both the title bar container and the brand area (title text + dot) have
+the data-tauri-drag-region attribute. This allows the user to drag the
+window by holding any non-interactive area of the title bar.
+
+The icon buttons (refresh, settings, close) are inside .title-actions
+which does NOT have data-tauri-drag-region, so button clicks are not
+captured by the drag handler.
+
+2. Capabilities for drag
+-------------------------
+src-tauri/capabilities/default.json includes:
+  "core:window:allow-start-dragging"
+
+This permission is required for data-tauri-drag-region to work at
+runtime (verified in Task 7 — core:default does NOT include it).
+
+3. Window configuration
+------------------------
+tauri.conf.json: decorations=false, resizable=false, transparent=true
+The window has no native title bar, so the custom HTML title bar with
+data-tauri-drag-region is the sole drag surface.
+
+4. CSS
+------
+.title-bar { height: 28px; ... } — fixed-height drag surface
+.title-brand { flex: 1; ... } — fills space between brand and actions
+
+Status: VERIFIED (code-level). Runtime visual QA deferred (GTK dev-link
+limitation from Task 1 prevents cargo tauri dev on this system).

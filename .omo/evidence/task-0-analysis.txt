@@ -1,0 +1,53 @@
+=== Task 0 Spike Analysis ===
+Date: 2025-06-23
+Status: PARTIALLY COMPLETE (API call pending credentials)
+
+=== GetPersonalPlan API ===
+The spike script (.omo/spike/get_personal_plan.py) is fully implemented with correct
+V4 HMAC-SHA256 signature but could not be executed because VOLCENGINE_ACCESS_KEY and
+VOLCENGINE_SECRET_KEY environment variables were not set.
+
+The script implements:
+- Canonical request with signed headers: host;x-content-sha256;x-date
+- Credential scope: {YYYYMMDD}/cn-beijing/ark/request
+- Signing key derivation: kSecret -> kDate -> kRegion -> kService -> kSigning
+- Proper X-Date format (YYYYMMDDTHHMMSSZ) and X-Content-Sha256 (SHA256 hex of body)
+- Response capture to .omo/evidence/task-0-spike-response.json
+
+Open question: Does GetPersonalPlan(Plan="CodingPlan") return usage data (percent/used/quota)
+or only plan metadata (tier/status/validity)? This cannot be answered without a live API call.
+
+=== arkcli Fallback: CONFIRMED VIABLE ===
+`arkcli usage plan` is installed (v1.0.1) and returns rich usage data:
+
+Output structure:
+{
+  "viewer": { auth_method, user_id, user_name, profile, region, ... },
+  "items": [
+    {
+      "product": "coding-plan",
+      "edition": "personal",
+      "subscribed": true,
+      "periods": [
+        { "label": "session",  "percent": 19.84,  "reset_at": <unix_ms> },
+        { "label": "weekly",   "percent": 4.06,   "reset_at": <unix_ms> },
+        { "label": "monthly",  "percent": 61.14,  "reset_at": <unix_ms> }
+      ],
+      "updated_at": <unix_sec>
+    }
+  ]
+}
+
+This matches the expected format from the project plan (items[].periods[]{label, percent, reset_at}).
+
+=== Recommendation ===
+Use arkcli as the primary data source for Task 5 (Volcano Engine API client).
+The arkcli output provides all needed fields (percent, reset_at per period) in a
+clean JSON format. The GetPersonalPlan API spike script remains available as a
+reference implementation of V4 signing, which may be needed for other Volcengine
+APIs in the future.
+
+=== Evidence Files ===
+- .omo/spike/get_personal_plan.py — V4-signed API spike script (ready to run)
+- .omo/evidence/task-0-spike-note.txt — Credentials-missing note
+- .omo/evidence/task-0-arkcli-output.json — Full arkcli usage plan output

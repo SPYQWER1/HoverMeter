@@ -1,0 +1,38 @@
+{
+  "viewer": {
+    "auth_method": "sso",
+    "is_root": true,
+    "user_id": "2115316499",
+    "user_name": "spyqwer",
+    "account_id": "2115316499",
+    "profile": "coding-plan_cn-beijing_personal",
+    "tenant": "volc",
+    "region": "cn-beijing",
+    "project_name": "账号全部资源"
+  },
+  "items": [
+    {
+      "product": "coding-plan",
+      "edition": "personal",
+      "subscribed": true,
+      "periods": [
+        {
+          "label": "session",
+          "percent": 19.959566000000002,
+          "reset_at": 1782194415000
+        },
+        {
+          "label": "weekly",
+          "percent": 4.0709726,
+          "reset_at": 1782662400000
+        },
+        {
+          "label": "monthly",
+          "percent": 61.14445516666667,
+          "reset_at": 1782921599000
+        }
+      ],
+      "updated_at": 1782193163
+    }
+  ]
+}

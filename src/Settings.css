@@ -1,0 +1,254 @@
+/* HoverMeter Settings - dark theme tokens (consistent with widget spec) */
+.settings-overlay {
+  --hm-bg: rgba(20, 20, 30, 0.9);
+  --hm-bg-input: rgba(255, 255, 255, 0.06);
+  --hm-bg-input-focus: rgba(255, 255, 255, 0.1);
+  --hm-border: rgba(255, 255, 255, 0.12);
+  --hm-border-focus: rgba(74, 158, 255, 0.6);
+  --hm-text: #e8e8f0;
+  --hm-text-muted: #9a9ab0;
+  --hm-accent: #4a9eff;
+  --hm-accent-hover: #3a8ae5;
+  --hm-danger: #ff6b6b;
+  --hm-radius: 12px;
+  --hm-radius-sm: 8px;
+  --hm-blur: 12px;
+  --hm-spacing: 12px;
+  --hm-font: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  box-sizing: border-box;
+}
+
+.settings-panel {
+  width: 320px;
+  max-width: 100%;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--hm-bg);
+  backdrop-filter: blur(var(--hm-blur));
+  -webkit-backdrop-filter: blur(var(--hm-blur));
+  border: 1px solid var(--hm-border);
+  border-radius: var(--hm-radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  color: var(--hm-text);
+  font-family: var(--hm-font);
+  font-size: 14px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px var(--hm-spacing);
+  border-bottom: 1px solid var(--hm-border);
+}
+
+.settings-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.settings-close {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--hm-text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.settings-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--hm-text);
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--hm-spacing);
+}
+
+.settings-section {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-section-title {
+  margin: 0 0 2px;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--hm-text-muted);
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-label {
+  font-size: 12px;
+  color: var(--hm-text-muted);
+}
+
+.settings-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--hm-border);
+  border-radius: var(--hm-radius-sm);
+  background: var(--hm-bg-input);
+  color: var(--hm-text);
+  font-size: 13px;
+  font-family: var(--hm-font);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.settings-input::placeholder {
+  color: rgba(154, 154, 176, 0.6);
+}
+
+.settings-input:focus {
+  border-color: var(--hm-border-focus);
+  background: var(--hm-bg-input-focus);
+}
+
+/* number input: hide spinner for cleaner look */
+.settings-input[type="number"]::-webkit-inner-spin-button,
+.settings-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.settings-input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-suffix {
+  font-size: 12px;
+  color: var(--hm-text-muted);
+  white-space: nowrap;
+}
+
+.settings-value {
+  font-size: 12px;
+  color: var(--hm-text);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* range slider */
+.settings-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  margin: 8px 0;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  outline: none;
+  cursor: pointer;
+}
+
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--hm-accent);
+  border: 2px solid #1a1a26;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.settings-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.settings-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--hm-accent);
+  border: 2px solid #1a1a26;
+  cursor: pointer;
+}
+
+.settings-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 var(--hm-spacing) var(--hm-spacing);
+}
+
+.settings-button {
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--hm-radius-sm);
+  background: var(--hm-accent);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--hm-font);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.settings-button:hover {
+  background: var(--hm-accent-hover);
+}
+
+.settings-button:active {
+  transform: translateY(1px);
+}
+
+.settings-button-secondary {
+  background: transparent;
+  color: var(--hm-text-muted);
+  border: 1px solid var(--hm-border);
+}
+
+.settings-button-secondary:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--hm-text);
+}
