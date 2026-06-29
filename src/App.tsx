@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
@@ -164,10 +164,11 @@ function App() {
   const pendingWindowStateSave = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [widgetHovered, setWidgetHovered] = useState(false);
-  const { dockState } = useWindowDock(widgetHovered);
+  const { dockState, prepareForHide } = useWindowDock(widgetHovered);
 
   const dockStateRef = useRef(dockState.edge);
   dockStateRef.current = dockState.edge;
+  const hidingRef = useRef(false);
 
   // Reveal the window after mount to avoid the initial white flash.
   // The window is created with visible:false in tauri.conf.json.
@@ -212,6 +213,10 @@ function App() {
       setShowSettings(true);
     });
 
+    const unlistenHideRequested = listen("hide-requested", () => {
+      handleHide();
+    });
+
     const scheduleSaveState = () => {
       if (dockStateRef.current) return;
       if (pendingWindowStateSave.current) {
@@ -232,6 +237,7 @@ function App() {
         clearTimeout(pendingWindowStateSave.current);
       }
       unlistenSettings.then((fn) => fn());
+      unlistenHideRequested.then((fn) => fn());
       unlistenMoved.then((fn) => fn());
       unlistenResized.then((fn) => fn());
     };
@@ -262,11 +268,23 @@ function App() {
       );
   }, [showSettings]);
 
-  const handleHide = () => {
-    getCurrentWebviewWindow()
-      .hide()
-      .catch((err: unknown) => console.error("failed to hide window:", err));
-  };
+  const handleHide = useCallback(async () => {
+    if (hidingRef.current) return;
+    hidingRef.current = true;
+
+    try {
+      const win = getCurrentWebviewWindow();
+      const visible = await win.isVisible();
+      if (!visible) return;
+
+      await prepareForHide();
+      await win.hide();
+    } catch (err: unknown) {
+      console.error("failed to hide window:", err);
+    } finally {
+      hidingRef.current = false;
+    }
+  }, [prepareForHide]);
 
   const handleSaveSettings = async (settings: AppSettings) => {
     try {

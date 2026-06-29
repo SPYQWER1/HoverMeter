@@ -2,11 +2,31 @@ mod deepseek;
 mod storage;
 mod volcano;
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager, WindowEvent,
 };
+
+/// Simple guard to ignore rapid consecutive tray toggles, which can deadlock
+/// WebView2 on Windows when combined with transparent always-on-top windows.
+struct TrayToggleGuard(AtomicBool);
+
+impl TrayToggleGuard {
+    fn new() -> Self {
+        Self(AtomicBool::new(false))
+    }
+
+    fn try_acquire(&self) -> bool {
+        !self.0.swap(true, Ordering::SeqCst)
+    }
+
+    fn release(&self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
+}
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -36,11 +56,13 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_positioner::init())
+        .manage(TrayToggleGuard::new())
         .on_window_event(|window, event| {
-            // Hide to tray instead of closing the window.
+            // Close hides to tray instead of quitting. Let the frontend handle the
+            // actual hide so it can wait for any window animations to finish first.
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
-                let _ = window.hide();
+                let _ = window.emit("hide-requested", ());
             }
         })
         .setup(|app| {
@@ -89,14 +111,24 @@ pub fn run() {
                     } = event
                     {
                         let app = tray.app_handle();
+                        let guard = app.state::<TrayToggleGuard>();
+                        if !guard.try_acquire() {
+                            return;
+                        }
+
                         if let Some(window) = app.get_webview_window("main") {
                             if window.is_visible().unwrap_or(false) {
-                                let _ = window.hide();
+                                // Ask the frontend to hide so any in-flight dock
+                                // animation can settle first.
+                                let _ = window.emit("hide-requested", ());
                             } else {
                                 let _ = window.show();
                                 let _ = window.set_focus();
+                                let _ = window.emit("show-widget", ());
                             }
                         }
+
+                        guard.release();
                     }
                 })
                 .build(app)?;
