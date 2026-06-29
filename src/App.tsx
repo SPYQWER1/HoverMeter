@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
@@ -21,8 +21,6 @@ interface StoredSettings {
 
 /** Shape returned by the `load_credentials` Tauri command (storage.rs `Credentials`). */
 interface StoredCredentials {
-  volcano_ak: string;
-  volcano_sk: string;
   deepseek_key: string;
 }
 
@@ -98,7 +96,7 @@ function TitleBar({
 }: TitleBarProps) {
   return (
     <div className="title-bar" data-tauri-drag-region>
-      <div className="title-brand" data-tauri-drag-region>
+      <div className="title-brand">
         <span className="title-dot" />
         <span>{title}</span>
       </div>
@@ -160,6 +158,8 @@ function App() {
     refresh,
   } = useUsageData(refreshInterval);
 
+  const pendingWindowStateSave = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Reveal the window after mount to avoid the initial white flash.
   // The window is created with visible:false in tauri.conf.json.
   useEffect(() => {
@@ -203,18 +203,24 @@ function App() {
       setShowSettings(true);
     });
 
-    const unlistenMoved = win.onMoved(() => {
-      saveWindowState(StateFlags.ALL).catch((err: unknown) =>
-        console.error("failed to save window state on move:", err),
-      );
-    });
-    const unlistenResized = win.onResized(() => {
-      saveWindowState(StateFlags.ALL).catch((err: unknown) =>
-        console.error("failed to save window state on resize:", err),
-      );
-    });
+    const scheduleSaveState = () => {
+      if (pendingWindowStateSave.current) {
+        clearTimeout(pendingWindowStateSave.current);
+      }
+      pendingWindowStateSave.current = setTimeout(() => {
+        saveWindowState(StateFlags.ALL).catch((err: unknown) =>
+          console.error("failed to save window state:", err),
+        );
+      }, 300);
+    };
+
+    const unlistenMoved = win.onMoved(scheduleSaveState);
+    const unlistenResized = win.onResized(scheduleSaveState);
 
     return () => {
+      if (pendingWindowStateSave.current) {
+        clearTimeout(pendingWindowStateSave.current);
+      }
       unlistenSettings.then((fn) => fn());
       unlistenMoved.then((fn) => fn());
       unlistenResized.then((fn) => fn());
@@ -236,8 +242,6 @@ function App() {
     ])
       .then(([creds, settings]) => {
         setInitialSettings({
-          volcano_access_key: creds?.volcano_ak ?? "",
-          volcano_secret_key: creds?.volcano_sk ?? "",
           deepseek_api_key: creds?.deepseek_key ?? "",
           refresh_interval: settings.refresh_interval,
           opacity: settings.opacity,
@@ -257,8 +261,6 @@ function App() {
   const handleSaveSettings = async (settings: AppSettings) => {
     try {
       await invoke("save_credentials", {
-        volcanoAccessKey: settings.volcano_access_key,
-        volcanoSecretKey: settings.volcano_secret_key,
         deepseekApiKey: settings.deepseek_api_key,
       });
       await invoke("save_settings", {

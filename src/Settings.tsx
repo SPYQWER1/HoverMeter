@@ -20,8 +20,6 @@ function Settings({
   onOpacityChange,
   initialSettings,
 }: SettingsProps) {
-  const [volcanoAccessKey, setVolcanoAccessKey] = useState("");
-  const [volcanoSecretKey, setVolcanoSecretKey] = useState("");
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
   const [refreshInterval, setRefreshInterval] = useState<number>(
     DEFAULT_REFRESH_INTERVAL,
@@ -30,8 +28,6 @@ function Settings({
 
   useEffect(() => {
     if (!isOpen || !initialSettings) return;
-    setVolcanoAccessKey(initialSettings.volcano_access_key);
-    setVolcanoSecretKey(initialSettings.volcano_secret_key);
     setDeepseekApiKey(initialSettings.deepseek_api_key);
     setRefreshInterval(initialSettings.refresh_interval);
     setOpacity(initialSettings.opacity);
@@ -55,8 +51,6 @@ function Settings({
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onSave({
-      volcano_access_key: volcanoAccessKey,
-      volcano_secret_key: volcanoSecretKey,
       deepseek_api_key: deepseekApiKey,
       refresh_interval: refreshInterval,
       opacity,
@@ -87,32 +81,6 @@ function Settings({
         <form className="settings-form" onSubmit={handleSubmit}>
           <fieldset className="settings-section">
             <legend className="settings-section-title">Credentials</legend>
-
-            <label className="settings-field">
-              <span className="settings-label">Volcano Access Key</span>
-              <input
-                type="password"
-                className="settings-input"
-                value={volcanoAccessKey}
-                onChange={(e) => setVolcanoAccessKey(e.target.value)}
-                placeholder="Enter AK"
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </label>
-
-            <label className="settings-field">
-              <span className="settings-label">Volcano Secret Key</span>
-              <input
-                type="password"
-                className="settings-input"
-                value={volcanoSecretKey}
-                onChange={(e) => setVolcanoSecretKey(e.target.value)}
-                placeholder="Enter SK"
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </label>
 
             <label className="settings-field">
               <span className="settings-label">DeepSeek API Key</span>

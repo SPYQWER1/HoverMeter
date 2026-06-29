@@ -2,8 +2,6 @@ mod deepseek;
 mod storage;
 mod volcano;
 
-pub mod v4_sign;
-
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},

@@ -103,6 +103,8 @@ body {
   padding: 0 var(--space-2);
   background: var(--bg-titlebar);
   border-bottom: 1px solid var(--border-subtle);
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
 .title-brand {
@@ -128,6 +130,8 @@ body {
   display: flex;
   align-items: center;
   gap: 2px;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .icon-btn {
@@ -144,6 +148,8 @@ body {
   font-size: 12px;
   line-height: 1;
   transition: background var(--transition-fast), color var(--transition-fast);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .icon-btn:hover {

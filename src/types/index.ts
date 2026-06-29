@@ -46,8 +46,6 @@ export interface VolcanoPlan {
 // ──────────────────────────────────────────────
 
 export interface AppSettings {
-  volcano_access_key: string;
-  volcano_secret_key: string;
   deepseek_api_key: string;
   refresh_interval: number;
   opacity: number;
@@ -83,8 +81,6 @@ export interface GetSettingsResponse {
 
 /** Request payload for `save_credentials` Tauri command */
 export interface SaveCredentialsRequest {
-  volcanoAccessKey: string;
-  volcanoSecretKey: string;
   deepseekApiKey: string;
 }
 

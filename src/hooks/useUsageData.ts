@@ -3,8 +3,6 @@ import { invoke } from "@tauri-apps/api/core";
 import type { VolcanoUsage, DeepSeekBalance } from "../types";
 
 interface Credentials {
-  volcano_ak: string;
-  volcano_sk: string;
   deepseek_key: string;
 }
 
@@ -40,10 +38,13 @@ export function useUsageData(
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Track whether we have a DeepSeek key so we know whether to fetch balance.
   const hasDeepSeekKey = useRef(false);
+  const fetchInProgress = useRef(false);
 
   const fetchData = useCallback(async (isInitial: boolean) => {
+    if (fetchInProgress.current) return;
+    fetchInProgress.current = true;
+
     if (isInitial) {
       setLoading(true);
     } else {
@@ -102,6 +103,7 @@ export function useUsageData(
     } finally {
       setLoading(false);
       setRefreshing(false);
+      fetchInProgress.current = false;
     }
   }, []);
 
