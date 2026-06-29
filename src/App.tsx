@@ -9,6 +9,7 @@ import type {
   AppSettings,
 } from "./types";
 import { useUsageData } from "./hooks/useUsageData";
+import { useWindowDock } from "./hooks/useWindowDock";
 import Settings from "./Settings";
 
 // ─── Types ───────────────────────────────────────
@@ -53,12 +54,14 @@ function formatReset(resetAt: number): string {
   return `${days}d`;
 }
 
-function formatTime(ts: number | undefined): string {
+function formatBeijingTime(ts: number | undefined): string {
   if (!ts) return "\u2014";
-  const d = new Date(ts);
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(ts));
 }
 
 function currencySymbol(currency: string): string {
@@ -132,6 +135,7 @@ function UsageCell({ period }: { period: PeriodUsage }) {
     <div className={`usage-cell is-${status}`}>
       <span className="usage-label">{period.label}</span>
       <span className="usage-value">{formatPercent(period.percent)}</span>
+      <span className="usage-reset">{`in ${formatReset(period.reset_at)}`}</span>
     </div>
   );
 }
@@ -139,7 +143,6 @@ function UsageCell({ period }: { period: PeriodUsage }) {
 // ─── App ─────────────────────────────────────────
 
 function App() {
-  const [expanded, setExpanded] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [opacity, setOpacity] = useState<number>(DEFAULT_OPACITY);
   const [refreshInterval, setRefreshInterval] = useState<number>(
@@ -159,6 +162,12 @@ function App() {
   } = useUsageData(refreshInterval);
 
   const pendingWindowStateSave = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [widgetHovered, setWidgetHovered] = useState(false);
+  const { dockState } = useWindowDock(widgetHovered);
+
+  const dockStateRef = useRef(dockState.edge);
+  dockStateRef.current = dockState.edge;
 
   // Reveal the window after mount to avoid the initial white flash.
   // The window is created with visible:false in tauri.conf.json.
@@ -204,6 +213,7 @@ function App() {
     });
 
     const scheduleSaveState = () => {
+      if (dockStateRef.current) return;
       if (pendingWindowStateSave.current) {
         clearTimeout(pendingWindowStateSave.current);
       }
@@ -289,7 +299,11 @@ function App() {
 
   return (
     <>
-      <div className="widget">
+      <div
+        className="widget"
+        onMouseEnter={() => setWidgetHovered(true)}
+        onMouseLeave={() => setWidgetHovered(false)}
+      >
         <TitleBar
           title="HoverMeter"
           isRefreshing={refreshing}
@@ -342,55 +356,13 @@ function App() {
                 </div>
               </section>
 
-              <button
-                className={`expand-toggle${expanded ? " is-expanded" : ""}`}
-                onClick={() => setExpanded((v) => !v)}
-              >
-                <span className="chevron">{"\u25B8"}</span>
-                <span>{expanded ? "Collapse" : "Details"}</span>
-              </button>
-
-              <div className={`details${expanded ? " is-open" : ""}`}>
-                {periods.map((p) => (
-                  <div className="detail-row" key={p.label}>
-                    <span className="detail-key">{p.label} reset</span>
-                    <span className="detail-val">
-                      in {formatReset(p.reset_at)}
-                    </span>
-                  </div>
-                ))}
-                {balanceAvailable && balanceInfo && (
-                  <>
-                    <div className="detail-row">
-                      <span className="detail-key">granted</span>
-                      <span className="detail-val">
-                        {currencySymbol(balanceInfo.currency)}
-                        {balanceInfo.granted_balance}
-                      </span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-key">topped up</span>
-                      <span className="detail-val">
-                        {currencySymbol(balanceInfo.currency)}
-                        {balanceInfo.topped_up_balance}
-                      </span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-key">currency</span>
-                      <span className="detail-val">{balanceInfo.currency}</span>
-                    </div>
-                  </>
-                )}
-                <div className="detail-row">
-                  <span className="detail-key">updated</span>
-                  <span className="detail-val">
-                    {formatTime(volcanoUsage?.updated_at)}
-                  </span>
-                </div>
+              <div className="update-footer">
+                updated {formatBeijingTime(volcanoUsage?.updated_at)}
               </div>
             </>
           )}
         </div>
+
       </div>
 
       <Settings
