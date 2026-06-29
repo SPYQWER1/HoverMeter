@@ -23,7 +23,7 @@ const UNDOCK_THRESHOLD = 30;
 const SLIDE_DURATION_MS = 180;
 const SLIDE_STEPS = 12;
 const DRAG_END_DELAY_MS = 300;
-const VISIBLE_STRIP = 1;
+const VISIBLE_STRIP = 6;
 
 export function useWindowDock(hovered: boolean) {
   const [dockState, setDockState] = useState<DockState>({ edge: null });
@@ -38,6 +38,10 @@ export function useWindowDock(hovered: boolean) {
   const hoveredRef = useRef(hovered);
   const isDraggingRef = useRef(false);
   const dragEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingApplyRef = useRef(false);
+  const applyDockVisibilityRef = useRef<
+    ((edge: DockEdge, bounds: MonitorBounds) => Promise<void>) | null
+  >(null);
 
   hoveredRef.current = hovered;
 
@@ -50,23 +54,48 @@ export function useWindowDock(hovered: boolean) {
     if (slidingRef.current) return;
     slidingRef.current = true;
 
-    const pos = await winRef.current.outerPosition();
-    const startX = pos.x;
-    const startY = pos.y;
-    const stepMs = SLIDE_DURATION_MS / SLIDE_STEPS;
+    try {
+      const pos = await winRef.current.outerPosition();
+      const startX = pos.x;
+      const startY = pos.y;
+      const stepMs = SLIDE_DURATION_MS / SLIDE_STEPS;
 
-    for (let i = 1; i <= SLIDE_STEPS; i++) {
-      const t = i / SLIDE_STEPS;
-      const eased = 1 - (1 - t) * (1 - t);
-      const curX = Math.round(startX + (targetX - startX) * eased);
-      const curY = Math.round(startY + (targetY - startY) * eased);
-      await winRef.current.setPosition(
-        new PhysicalPosition(curX, curY),
-      );
-      await new Promise((r) => setTimeout(r, stepMs));
+      for (let i = 1; i <= SLIDE_STEPS; i++) {
+        const t = i / SLIDE_STEPS;
+        const eased = 1 - (1 - t) * (1 - t);
+        const curX = Math.round(startX + (targetX - startX) * eased);
+        const curY = Math.round(startY + (targetY - startY) * eased);
+        await winRef.current.setPosition(
+          new PhysicalPosition(curX, curY),
+        );
+        await new Promise((r) => setTimeout(r, stepMs));
+      }
+    } finally {
+      slidingRef.current = false;
+
+      // If hover (or drag) changed while we were sliding, re-apply the
+      // visibility for the current dock edge so the window doesn't get stuck
+      // in the wrong state.
+      if (pendingApplyRef.current) {
+        pendingApplyRef.current = false;
+        const edge = dockRef.current.edge;
+        if (edge) {
+          try {
+            const monitor = await currentMonitor();
+            if (!monitor) return;
+            const bounds: MonitorBounds = {
+              x: monitor.position.x,
+              y: monitor.position.y,
+              width: monitor.size.width,
+              height: monitor.size.height,
+            };
+            await applyDockVisibilityRef.current?.(edge, bounds);
+          } catch {
+            // ignore
+          }
+        }
+      }
     }
-
-    slidingRef.current = false;
   }, []);
 
   const getDockedPositions = async (
@@ -108,7 +137,10 @@ export function useWindowDock(hovered: boolean) {
 
   const applyDockVisibility = useCallback(
     async (edge: DockEdge, bounds: MonitorBounds) => {
-      if (slidingRef.current) return;
+      if (slidingRef.current) {
+        pendingApplyRef.current = true;
+        return;
+      }
 
       const positions = await getDockedPositions(edge, bounds);
       const target = hoveredRef.current || isDraggingRef.current
@@ -119,6 +151,8 @@ export function useWindowDock(hovered: boolean) {
     },
     [slideTo],
   );
+
+  applyDockVisibilityRef.current = applyDockVisibility;
 
   const revealWindow = useCallback(async () => {
     const win = winRef.current;
@@ -448,7 +482,7 @@ export function useWindowDock(hovered: boolean) {
   // React to hover changes while already docked.
   useEffect(() => {
     const edge = dockRef.current.edge;
-    if (!edge || slidingRef.current) return;
+    if (!edge) return;
 
     let cancelled = false;
     currentMonitor()
