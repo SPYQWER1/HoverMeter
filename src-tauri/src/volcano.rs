@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// One period of usage data (session, weekly, or monthly).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,7 +17,7 @@ pub struct PeriodUsage {
 pub struct VolcanoUsage {
     /// Usage periods (session, weekly, monthly)
     pub periods: Vec<PeriodUsage>,
-    /// Unix timestamp in seconds when the data was last updated
+    /// Unix timestamp in milliseconds when the data was fetched by this app
     pub updated_at: i64,
 }
 
@@ -31,7 +32,6 @@ struct ArkcliOutput {
 struct ArkcliItem {
     product: String,
     periods: Vec<ArkcliPeriod>,
-    updated_at: i64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -96,9 +96,14 @@ fn query_volcano_usage() -> Result<VolcanoUsage, String> {
         })
         .collect();
 
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+
     Ok(VolcanoUsage {
         periods,
-        updated_at: coding_plan.updated_at,
+        updated_at: now_ms,
     })
 }
 
