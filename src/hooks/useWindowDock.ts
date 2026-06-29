@@ -505,7 +505,17 @@ export function useWindowDock(hovered: boolean) {
     };
   }, [hovered, applyDockVisibility]);
 
+  const prepareForHide = useCallback(async () => {
+    // Wait for any in-flight slide animation to finish before the caller hides
+    // the window. Hiding while setPosition is being called can make WebView2 on
+    // Windows become unresponsive.
+    while (slidingRef.current) {
+      await new Promise((r) => setTimeout(r, 30));
+    }
+  }, []);
+
   return {
     dockState,
+    prepareForHide,
   };
 }
