@@ -78,70 +78,72 @@ function Settings({
           </button>
         </header>
 
-        <form className="settings-form" onSubmit={handleSubmit}>
-          <fieldset className="settings-section">
-            <legend className="settings-section-title">Credentials</legend>
+        <div className="settings-scroll">
+          <form className="settings-form" onSubmit={handleSubmit}>
+            <fieldset className="settings-section">
+              <legend className="settings-section-title">Credentials</legend>
 
-            <label className="settings-field">
-              <span className="settings-label">DeepSeek API Key</span>
-              <input
-                type="password"
-                className="settings-input"
-                value={deepseekApiKey}
-                onChange={(e) => setDeepseekApiKey(e.target.value)}
-                placeholder="Enter API key"
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </label>
-          </fieldset>
-
-          <fieldset className="settings-section">
-            <legend className="settings-section-title">Display</legend>
-
-            <label className="settings-field">
-              <span className="settings-label">Refresh Interval</span>
-              <div className="settings-row">
+              <label className="settings-field">
+                <span className="settings-label">DeepSeek API Key</span>
                 <input
-                  type="number"
+                  type="password"
                   className="settings-input"
-                  min={1}
-                  step={1}
-                  value={refreshInterval}
-                  onChange={handleRefreshChange}
+                  value={deepseekApiKey}
+                  onChange={(e) => setDeepseekApiKey(e.target.value)}
+                  placeholder="Enter API key"
+                  autoComplete="off"
+                  spellCheck={false}
                 />
-                <span className="settings-suffix">min</span>
-              </div>
-            </label>
+              </label>
+            </fieldset>
 
-            <label className="settings-field">
-              <span className="settings-label">Opacity</span>
-              <input
-                type="range"
-                className="settings-slider"
-                min={0.5}
-                max={1.0}
-                step={0.05}
-                value={opacity}
-                onChange={handleOpacityChange}
-              />
-              <span className="settings-value">{opacity.toFixed(2)}</span>
-            </label>
-          </fieldset>
+            <fieldset className="settings-section">
+              <legend className="settings-section-title">Display</legend>
 
-          <div className="settings-footer">
-            <button
-              type="button"
-              className="settings-button settings-button-secondary"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="settings-button">
-              Save
-            </button>
-          </div>
-        </form>
+              <label className="settings-field">
+                <span className="settings-label">Refresh Interval</span>
+                <div className="settings-row">
+                  <input
+                    type="number"
+                    className="settings-input"
+                    min={1}
+                    step={1}
+                    value={refreshInterval}
+                    onChange={handleRefreshChange}
+                  />
+                  <span className="settings-suffix">min</span>
+                </div>
+              </label>
+
+              <label className="settings-field">
+                <span className="settings-label">Opacity</span>
+                <input
+                  type="range"
+                  className="settings-slider"
+                  min={0.5}
+                  max={1.0}
+                  step={0.05}
+                  value={opacity}
+                  onChange={handleOpacityChange}
+                />
+                <span className="settings-value">{opacity.toFixed(2)}</span>
+              </label>
+            </fieldset>
+
+            <div className="settings-footer">
+              <button
+                type="button"
+                className="settings-button settings-button-secondary"
+                onClick={onClose}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="settings-button">
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
