@@ -14,14 +14,15 @@
       {
         "title": "HoverMeter",
         "width": 320,
-        "height": 180,
+        "height": 210,
         "alwaysOnTop": true,
         "transparent": true,
         "decorations": false,
         "skipTaskbar": true,
         "resizable": false,
         "visible": false,
-        "center": true
+        "center": true,
+        "shadow": false
       }
     ],
     "security": {
