@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -17,9 +20,10 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: npm ci
       - run: npm run tauri build
-      - uses: actions/upload-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: windows-installer
-          path: |
+          files: |
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*-setup.exe
+          generate_release_notes: true
