@@ -16,7 +16,7 @@ src/utils/log.ts     frontend logging     src-tauri/src/main.rs     entry point
 
 - Window: 290×156, transparent, always-on-top, no decorations, not resizable, skip taskbar, no shadow, starts hidden (`visible: false` in `tauri.conf.json`), shown by JS on mount.
 - `tsconfig.json` has `noUnusedLocals: true` + `noUnusedParameters: true` — unused imports/vars are compile errors.
-- Credentials stored in OS keyring (`keyring` crate). Settings stored as JSON in Tauri app data dir.
+- Settings stored as JSON in Tauri app data dir (`storage.rs`).
 - Volcano usage: Rust spawns `arkcli usage plan` subprocess, parses JSON stdout.
 - DeepSeek balance: Rust calls `GET https://api.deepseek.com/user/balance` with Bearer token.
 
@@ -41,15 +41,32 @@ npm run tauri build
 
 ## Release / Publish
 
+**CI/CD handles releases.** Push a version tag (`v*`) and GitHub Actions builds + publishes automatically. Do NOT manually upload artifacts with `gh release create`.
+
+### How to release
+
+```bash
+# 1. Bump version in tauri.conf.json AND Cargo.toml
+# 2. Commit + push
+git push origin windowsbuild
+# 3. Tag and push — CI does the rest
+git tag v0.1.2
+git push origin v0.1.2
+```
+
+The `release.yml` workflow (`.github/workflows/release.yml`) triggers on `push: tags: "v*"`, builds on `windows-latest`, and uses `softprops/action-gh-release@v2` to create the GitHub Release with MSI + NSIS artifacts attached. Monitor progress at https://github.com/SPYQWER1/HoverMeter/actions.
+
+### Manual local build (for testing)
+
 The project lives in WSL (`/home/spy/HoverMeter`) but must be built on Windows for native MSVC targets.
 
-### Prerequisites (Windows side)
+#### Prerequisites (Windows side)
 
 - **Node.js** + npm (installed)
 - **Rust** (installed via `winget install Rustlang.Rustup`)
 - `powershell.exe` must be callable from WSL
 
-### Workflow
+#### Workflow
 
 ```bash
 # 1. Sync source to Windows Desktop (exclude build artifacts)
@@ -67,7 +84,7 @@ powershell.exe -Command \
   '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User"); cd "C:\Users\15981\Desktop\HoveMeter"; npm install; npm run tauri build'
 ```
 
-### Output
+#### Output
 
 | Artifact | Path |
 |----------|------|
@@ -85,27 +102,27 @@ powershell.exe -Command \
 
 ## Auto-deploy after code changes
 
-Whenever you finish a batch of source-code changes in this project (especially files under `src/` or `src-tauri/src/`), you should **automatically sync the project to Windows and run a release build** so the user gets an up-to-date installer/executable.
+Whenever you finish a batch of source-code changes in this project (especially files under `src/` or `src-tauri/src/`), you should **automatically sync the project to Windows and run a local test build** so the user gets an up-to-date executable for testing.
 
 Recommended flow:
 
 1. Perform the code edits and verify them (e.g., `npx tsc --noEmit`, `cargo test`, or the checks the user requested).
-2. Run the sync + Windows build commands from the **Release / Publish** workflow above.
+2. Run the sync + Windows build commands from the **Manual local build** section above.
 3. If `hovermeter.exe` is already running and blocks the build, kill it first, then retry.
 4. Report the produced artifact paths and sizes.
 
-> **Note:** A true opencode plugin hook (`tool.execute.after`) could trigger this automatically on every edit, but Windows release builds take 30–60 s and are prone to file-lock issues if the app is running. Using AGENTS.md instructions keeps the agent in control so it can batch edits, run checks, handle retries, and surface errors clearly.
+> **Note:** For actual releases, just push a version tag — CI handles the rest. The local build is for testing only.
 
 ## Key facts
 
 - **`arkcli` must be installed and on PATH** for Volcano usage data. Without it, the widget shows an error.
+- **Log rotation**: `RotationStrategy::KeepOne`, max 100KB per file.
 - **No linter or formatter configured** for the frontend. No ESLint, no Prettier.
 - **No frontend test framework.** Only Rust unit tests exist (`cargo test`).
 - **`npm run build` runs `tsc` first** — type errors block the build.
-- **`greet` command** in `lib.rs` is a Tauri template leftover, still registered but unused. So is `open_log_dir`, but that one IS wired to the tray "Open Logs" menu item.
+- **CI/CD**: `.github/workflows/ci.yml` (typecheck + Rust tests on push/PR), `.github/workflows/release.yml` (build + publish on `v*` tags).
 - **`src/App.css` is dead code** — not imported anywhere. `main.tsx` only imports `styles.css`. `src/assets/react.svg` is also a template leftover.
-- **`index.html` title** still says "Tauri + React + Typescript" (template leftover).
-- **`keyring` crate** needs OS keychain access. On headless Linux, this may require `gnome-keyring` or `libsecret`.
+- **`index.html` lang** set to `zh-CN`, all UI is in Chinese.
 - **Tauri dev uses fixed port 1420** with `strictPort: true`. If port is occupied, it fails.
 - **Window close is intercepted** — close hides to tray instead of quitting. Quit via tray menu.
 - **Tray icon**: left-click toggles window visibility, right-click shows menu (Show/Settings/Open Logs/Quit).
