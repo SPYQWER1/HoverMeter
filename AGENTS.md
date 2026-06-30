@@ -48,7 +48,7 @@ npm run tauri build
 ```bash
 # 1. Bump version in tauri.conf.json AND Cargo.toml
 # 2. Commit + push
-git push origin windowsbuild
+git push origin local
 # 3. Tag and push — CI does the rest
 git tag v0.1.2
 git push origin v0.1.2
