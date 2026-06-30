@@ -174,8 +174,6 @@ pub fn run() {
             open_log_dir,
             deepseek::get_deepseek_balance,
             volcano::get_volcano_usage,
-            storage::save_credentials,
-            storage::load_credentials,
             storage::save_settings,
             storage::load_settings,
         ])

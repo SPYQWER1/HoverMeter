@@ -5,15 +5,11 @@ use tauri::Manager;
 
 // ─── Data Structures ─────────────────────────────
 
-/// API credentials stored in OS keyring
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Credentials {
-    pub deepseek_key: String,
-}
-
 /// Application settings persisted as JSON in app data dir
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
+    #[serde(default)]
+    pub deepseek_api_key: String,
     #[serde(default = "default_refresh_interval")]
     pub refresh_interval: i32,
     #[serde(default = "default_opacity")]
@@ -31,66 +27,12 @@ fn default_opacity() -> f64 {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            deepseek_api_key: String::new(),
             refresh_interval: default_refresh_interval(),
             opacity: default_opacity(),
         }
     }
 }
-
-// ─── Keyring Constants ───────────────────────────
-
-const KEYRING_SERVICE: &str = "hovermeter";
-const KEYRING_USER_DEEPSEEK: &str = "deepseek_key";
-
-// ─── Keyring Helpers ─────────────────────────────
-
-fn set_keyring(user: &str, password: &str) -> Result<(), String> {
-    let entry = keyring::Entry::new(KEYRING_SERVICE, user)
-        .map_err(|e| {
-            let msg = format!("Failed to create keyring entry: {e}");
-            log::error!("{msg}");
-            msg
-        })?;
-    entry
-        .set_password(password)
-        .map_err(|e| {
-            let msg = format!("Failed to save credential to keyring: {e}");
-            log::error!("{msg}");
-            msg
-        })
-}
-
-fn get_keyring(user: &str) -> Result<String, String> {
-    let entry = keyring::Entry::new(KEYRING_SERVICE, user)
-        .map_err(|e| {
-            let msg = format!("Failed to create keyring entry: {e}");
-            log::error!("{msg}");
-            msg
-        })?;
-    entry
-        .get_password()
-        .map_err(|e| {
-            let msg = format!("Failed to read credential from keyring: {e}");
-            log::warn!("{msg}");
-            msg
-        })
-}
-
-
-// ─── Internal API ─────────────────────────────────
-
-fn save_creds(deepseek_key: &str) -> Result<(), String> {
-    log::info!("Saving DeepSeek credentials");
-    set_keyring(KEYRING_USER_DEEPSEEK, deepseek_key)
-}
-
-fn load_creds() -> Option<Credentials> {
-    log::info!("Loading DeepSeek credentials");
-    let deepseek_key = get_keyring(KEYRING_USER_DEEPSEEK).ok()?;
-    log::info!("DeepSeek credentials loaded");
-    Some(Credentials { deepseek_key })
-}
-
 
 // ─── Settings Path ───────────────────────────────
 
@@ -113,10 +55,19 @@ fn settings_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
 }
 
 /// Persist settings to a JSON file in the Tauri app data directory.
-fn save_setts(refresh_interval: i32, opacity: f64, app_handle: &AppHandle) -> Result<(), String> {
-    log::info!("Saving settings: refresh_interval={refresh_interval}, opacity={opacity}");
+fn save_setts(
+    deepseek_api_key: &str,
+    refresh_interval: i32,
+    opacity: f64,
+    app_handle: &AppHandle,
+) -> Result<(), String> {
+    log::info!(
+        "Saving settings: refresh_interval={refresh_interval}, opacity={opacity}, key_len={}",
+        deepseek_api_key.len()
+    );
     let path = settings_path(app_handle)?;
     let settings = Settings {
+        deepseek_api_key: deepseek_api_key.to_string(),
         refresh_interval,
         opacity,
     };
@@ -170,25 +121,14 @@ fn load_setts(app_handle: &AppHandle) -> Settings {
 // ─── Tauri Commands ──────────────────────────────
 
 #[tauri::command]
-pub fn save_credentials(deepseek_api_key: String) -> Result<(), String> {
-    log::info!("save_credentials command invoked");
-    save_creds(&deepseek_api_key)
-}
-
-#[tauri::command]
-pub fn load_credentials() -> Option<Credentials> {
-    log::info!("load_credentials command invoked");
-    load_creds()
-}
-
-#[tauri::command]
 pub fn save_settings(
+    deepseek_api_key: String,
     refresh_interval: i32,
     opacity: f64,
     app_handle: AppHandle,
 ) -> Result<(), String> {
     log::info!("save_settings command invoked");
-    save_setts(refresh_interval, opacity, &app_handle)
+    save_setts(&deepseek_api_key, refresh_interval, opacity, &app_handle)
 }
 
 #[tauri::command]

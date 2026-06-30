@@ -16,13 +16,9 @@ import Settings from "./Settings";
 
 /** Shape returned by the `load_settings` Tauri command (storage.rs `Settings`). */
 interface StoredSettings {
+  deepseek_api_key: string;
   refresh_interval: number;
   opacity: number;
-}
-
-/** Shape returned by the `load_credentials` Tauri command (storage.rs `Credentials`). */
-interface StoredCredentials {
-  deepseek_key: string;
 }
 
 const DEFAULT_OPACITY = 0.85;
@@ -148,6 +144,7 @@ function App() {
   const [refreshInterval, setRefreshInterval] = useState<number>(
     DEFAULT_REFRESH_INTERVAL,
   );
+  const [deepseekApiKey, setDeepseekApiKey] = useState<string>("");
   const [initialSettings, setInitialSettings] = useState<
     AppSettings | undefined
   >(undefined);
@@ -159,7 +156,7 @@ function App() {
     refreshing,
     error,
     refresh,
-  } = useUsageData(refreshInterval);
+  } = useUsageData(refreshInterval, deepseekApiKey);
 
   const pendingWindowStateSave = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -186,6 +183,9 @@ function App() {
 
     invoke<StoredSettings>("load_settings")
       .then((settings) => {
+        if (settings.deepseek_api_key) {
+          setDeepseekApiKey(settings.deepseek_api_key);
+        }
         if (
           typeof settings.opacity === "number" &&
           Number.isFinite(settings.opacity)
@@ -198,19 +198,12 @@ function App() {
         ) {
           setRefreshInterval(settings.refresh_interval);
         }
-      })
-      .catch((err: unknown) =>
-        console.error("failed to load settings:", err),
-      );
-
-    invoke<StoredCredentials | null>("load_credentials")
-      .then((creds) => {
-        if (!creds) {
+        if (!settings.deepseek_api_key) {
           setShowSettings(true);
         }
       })
       .catch((err: unknown) =>
-        console.error("failed to check credentials:", err),
+        console.error("failed to load settings:", err),
       );
 
     const unlistenSettings = listen("show-settings", () => {
@@ -256,13 +249,10 @@ function App() {
 
   useEffect(() => {
     if (!showSettings) return;
-    Promise.all([
-      invoke<StoredCredentials | null>("load_credentials"),
-      invoke<StoredSettings>("load_settings"),
-    ])
-      .then(([creds, settings]) => {
+    invoke<StoredSettings>("load_settings")
+      .then((settings) => {
         setInitialSettings({
-          deepseek_api_key: creds?.deepseek_key ?? "",
+          deepseek_api_key: settings.deepseek_api_key,
           refresh_interval: settings.refresh_interval,
           opacity: settings.opacity,
         });
@@ -292,13 +282,12 @@ function App() {
 
   const handleSaveSettings = async (settings: AppSettings) => {
     try {
-      await invoke("save_credentials", {
-        deepseekApiKey: settings.deepseek_api_key,
-      });
       await invoke("save_settings", {
+        deepseekApiKey: settings.deepseek_api_key,
         refreshInterval: settings.refresh_interval,
         opacity: settings.opacity,
       });
+      setDeepseekApiKey(settings.deepseek_api_key);
       setOpacity(settings.opacity);
       setRefreshInterval(settings.refresh_interval);
       setShowSettings(false);
