@@ -1,162 +1,146 @@
-/* HoverMeter Settings - dark theme tokens (consistent with widget spec) */
+/* HoverMeter Settings — simple dark modal */
 .settings-overlay {
-  --hm-bg: rgba(20, 20, 30, 0.9);
-  --hm-bg-input: rgba(255, 255, 255, 0.06);
-  --hm-bg-input-focus: rgba(255, 255, 255, 0.1);
-  --hm-border: rgba(255, 255, 255, 0.12);
+  --hm-bg: rgba(22, 22, 30, 0.92);
+  --hm-surface: rgba(255, 255, 255, 0.05);
+  --hm-surface-hover: rgba(255, 255, 255, 0.08);
+  --hm-border: rgba(255, 255, 255, 0.1);
   --hm-border-focus: rgba(74, 158, 255, 0.6);
-  --hm-text: #e8e8f0;
-  --hm-text-muted: #9a9ab0;
+  --hm-text: #f0f0f7;
+  --hm-text-muted: #9393a8;
   --hm-accent: #4a9eff;
   --hm-accent-hover: #3a8ae5;
-  --hm-danger: #ff6b6b;
-  --hm-radius: 12px;
-  --hm-radius-sm: 8px;
-  --hm-blur: 12px;
+  --hm-radius: 10px;
+  --hm-radius-sm: 6px;
   --hm-spacing: 12px;
   --hm-font: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
 
   position: fixed;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.55);
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 1000;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .settings-panel {
-  width: 320px;
+  width: 300px;
   max-width: 100%;
-  max-height: calc(100vh - 32px);
-  overflow: hidden;
+  max-height: calc(100vh - 8px);
   background: var(--hm-bg);
-  backdrop-filter: blur(var(--hm-blur));
-  -webkit-backdrop-filter: blur(var(--hm-blur));
   border: 1px solid var(--hm-border);
   border-radius: var(--hm-radius);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
   color: var(--hm-text);
   font-family: var(--hm-font);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.35;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-}
-
-.settings-scroll {
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-}
-
-.settings-scroll::-webkit-scrollbar {
-  width: 5px;
-}
-
-.settings-scroll::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 3px;
-  margin: 4px 0;
-}
-
-.settings-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 3px;
-}
-
-.settings-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.40);
+  overflow-y: hidden;
 }
 
 .settings-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px var(--hm-spacing);
+  justify-content: flex-end;
+  padding: 4px 8px;
   border-bottom: 1px solid var(--hm-border);
 }
 
 .settings-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.02em;
 }
 
 .settings-close {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--hm-radius-sm);
   background: transparent;
   color: var(--hm-text-muted);
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 
 .settings-close:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hm-surface-hover);
   color: var(--hm-text);
 }
 
 .settings-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: var(--hm-spacing);
+  padding: 6px;
 }
 
 .settings-section {
-  border: none;
-  padding: 0;
-  margin: 0;
-  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 2px;
+}
+
+.settings-section:not(:last-child) {
+  margin-bottom: 4px;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .settings-section-title {
-  margin: 0 0 2px;
-  padding: 0;
-  font-size: 11px;
+  margin: 0;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   color: var(--hm-text-muted);
 }
 
 .settings-field {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 4px;
 }
 
 .settings-label {
+  color: var(--hm-text);
   font-size: 12px;
-  color: var(--hm-text-muted);
+}
+
+.settings-inline-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
 }
 
 .settings-input {
-  width: 100%;
-  padding: 8px 10px;
+  padding: 4px 8px;
   border: 1px solid var(--hm-border);
   border-radius: var(--hm-radius-sm);
-  background: var(--hm-bg-input);
+  background: var(--hm-surface);
   color: var(--hm-text);
-  font-size: 13px;
+  font-size: 12px;
   font-family: var(--hm-font);
   outline: none;
   box-sizing: border-box;
@@ -164,54 +148,53 @@
 }
 
 .settings-input::placeholder {
-  color: rgba(154, 154, 176, 0.6);
+  color: rgba(147, 147, 168, 0.55);
 }
 
 .settings-input:focus {
   border-color: var(--hm-border-focus);
-  background: var(--hm-bg-input-focus);
+  background: var(--hm-surface-hover);
 }
 
-/* number input: hide spinner for cleaner look */
+.settings-input-number {
+  width: 48px;
+  text-align: center;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
 .settings-input[type="number"]::-webkit-inner-spin-button,
 .settings-input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 .settings-input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
 
-.settings-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .settings-suffix {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--hm-text-muted);
   white-space: nowrap;
 }
 
 .settings-value {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--hm-text);
   font-variant-numeric: tabular-nums;
-  min-width: 36px;
+  min-width: 28px;
   text-align: right;
 }
 
-/* range slider */
 .settings-slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 100%;
+  width: 84px;
   height: 4px;
-  margin: 8px 0;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.18);
   outline: none;
   cursor: pointer;
 }
@@ -219,47 +202,49 @@
 .settings-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--hm-accent);
-  border: 2px solid #1a1a26;
+  background: var(--hm-text);
+  border: 2px solid rgba(0, 0, 0, 0.25);
   cursor: pointer;
-  transition: transform 0.1s;
+  transition: transform 0.1s, background 0.1s;
 }
 
 .settings-slider::-webkit-slider-thumb:hover {
   transform: scale(1.15);
+  background: #ffffff;
 }
 
 .settings-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--hm-accent);
-  border: 2px solid #1a1a26;
+  background: var(--hm-text);
+  border: 2px solid rgba(0, 0, 0, 0.25);
   cursor: pointer;
 }
 
 .settings-footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 0 var(--hm-spacing) var(--hm-spacing);
+  gap: 6px;
+  margin-top: 0;
 }
 
 .settings-footer-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .settings-button {
-  padding: 8px 18px;
+  padding: 4px 10px;
   border: none;
   border-radius: var(--hm-radius-sm);
   background: var(--hm-accent);
   color: #ffffff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   font-family: var(--hm-font);
   cursor: pointer;
@@ -281,6 +266,21 @@
 }
 
 .settings-button-secondary:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hm-surface);
+  color: var(--hm-text);
+}
+
+.settings-text-button {
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  color: var(--hm-text-muted);
+  font-size: 11px;
+  font-family: var(--hm-font);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.settings-text-button:hover {
   color: var(--hm-text);
 }

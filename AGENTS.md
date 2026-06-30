@@ -79,6 +79,20 @@ powershell.exe -Command \
 - **Windows Desktop path is `HoveMeter`** (missing `r`), not `HoverMeter`.
 - **`npm install` and `npm run tauri build` must run on Windows**, not WSL. WSL builds produce Linux binaries.
 - **Build verified** (2026-06-29): sync + `npm run tauri build` completed on Windows, producing MSI/NSIS installers and the standalone exe.
+- **If the build fails with "拒绝访问" / os error 5**, a running `hovermeter.exe` is locking the output file. Kill it with `Stop-Process -Name hovermeter -Force` and retry.
+
+## Auto-deploy after code changes
+
+Whenever you finish a batch of source-code changes in this project (especially files under `src/` or `src-tauri/src/`), you should **automatically sync the project to Windows and run a release build** so the user gets an up-to-date installer/executable.
+
+Recommended flow:
+
+1. Perform the code edits and verify them (e.g., `npx tsc --noEmit`, `cargo test`, or the checks the user requested).
+2. Run the sync + Windows build commands from the **Release / Publish** workflow above.
+3. If `hovermeter.exe` is already running and blocks the build, kill it first, then retry.
+4. Report the produced artifact paths and sizes.
+
+> **Note:** A true opencode plugin hook (`tool.execute.after`) could trigger this automatically on every edit, but Windows release builds take 30–60 s and are prone to file-lock issues if the app is running. Using AGENTS.md instructions keeps the agent in control so it can batch edits, run checks, handle retries, and surface errors clearly.
 
 ## Key facts
 

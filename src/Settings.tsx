@@ -75,57 +75,41 @@ function Settings({
       onClick={onClose}
     >
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
-        <header className="settings-header">
-          <h2 className="settings-title">Settings</h2>
-          <button
-            type="button"
-            className="settings-close"
-            aria-label="Close settings"
-            onClick={onClose}
-          >
-            {"\u00D7"}
-          </button>
-        </header>
+        <form className="settings-form" onSubmit={handleSubmit}>
+          <section className="settings-section">
+            <label className="settings-field">
+              <span className="settings-label">DeepSeek API Key</span>
+              <input
+                type="password"
+                className="settings-input"
+                value={deepseekApiKey}
+                onChange={(e) => setDeepseekApiKey(e.target.value)}
+                placeholder="sk-..."
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+          </section>
 
-        <div className="settings-scroll">
-          <form className="settings-form" onSubmit={handleSubmit}>
-            <fieldset className="settings-section">
-              <legend className="settings-section-title">Credentials</legend>
-
-              <label className="settings-field">
-                <span className="settings-label">DeepSeek API Key</span>
+          <section className="settings-section">
+            <label className="settings-row">
+              <span className="settings-label">Refresh Interval</span>
+              <div className="settings-inline-input">
                 <input
-                  type="password"
-                  className="settings-input"
-                  value={deepseekApiKey}
-                  onChange={(e) => setDeepseekApiKey(e.target.value)}
-                  placeholder="Enter API key"
-                  autoComplete="off"
-                  spellCheck={false}
+                  type="number"
+                  className="settings-input settings-input-number"
+                  min={1}
+                  step={1}
+                  value={refreshInterval}
+                  onChange={handleRefreshChange}
                 />
-              </label>
-            </fieldset>
+                <span className="settings-suffix">min</span>
+              </div>
+            </label>
 
-            <fieldset className="settings-section">
-              <legend className="settings-section-title">Display</legend>
-
-              <label className="settings-field">
-                <span className="settings-label">Refresh Interval</span>
-                <div className="settings-row">
-                  <input
-                    type="number"
-                    className="settings-input"
-                    min={1}
-                    step={1}
-                    value={refreshInterval}
-                    onChange={handleRefreshChange}
-                  />
-                  <span className="settings-suffix">min</span>
-                </div>
-              </label>
-
-              <label className="settings-field">
-                <span className="settings-label">Opacity</span>
+            <label className="settings-row">
+              <span className="settings-label">Opacity</span>
+              <div className="settings-inline-input">
                 <input
                   type="range"
                   className="settings-slider"
@@ -136,32 +120,32 @@ function Settings({
                   onChange={handleOpacityChange}
                 />
                 <span className="settings-value">{opacity.toFixed(2)}</span>
-              </label>
-            </fieldset>
+              </div>
+            </label>
+          </section>
 
-            <div className="settings-footer">
+          <div className="settings-footer">
+            <button
+              type="button"
+              className="settings-text-button"
+              onClick={handleOpenLogs}
+            >
+              Open Logs
+            </button>
+            <div className="settings-footer-actions">
               <button
                 type="button"
                 className="settings-button settings-button-secondary"
-                onClick={handleOpenLogs}
+                onClick={onClose}
               >
-                Open Logs
+                Cancel
               </button>
-              <div className="settings-footer-actions">
-                <button
-                  type="button"
-                  className="settings-button settings-button-secondary"
-                  onClick={onClose}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="settings-button">
-                  Save
-                </button>
-              </div>
+              <button type="submit" className="settings-button">
+                Save
+              </button>
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   );
