@@ -1,6 +1,6 @@
 # HoverMeter
 
-基于 Tauri v2 的轻量桌面悬浮组件，实时显示**火山引擎 coding plan**用量和 **DeepSeek API** 余额 —— 紧凑的 290×156 窗口。
+基于 Tauri v2 的轻量桌面悬浮组件，实时显示**火山引擎 coding plan**用量和 **DeepSeek API** 余额 —— 290×156 窗口。
 
 ## 功能
 
@@ -27,52 +27,66 @@
 | 存储 | JSON 文件 |
 | 窗口 | 透明、始终置顶、无边框 |
 
-## 环境要求
+## 运行环境
 
-- **Node.js** ≥ 18 + npm
-- **Rust** 工具链（stable）
-- **`arkcli`** 已安装并在 PATH 中（用于获取火山引擎 coding plan 用量数据）— [安装指南](https://www.volcengine.com/docs/82379)
+- **Windows x64** — 仅提供 64 位 Windows 版本
 
-## 初始化配置
+## 前置依赖：安装 arkcli
 
-首次启动 HoverMeter 后，由于尚未配置 DeepSeek API Key，应用会自动弹出**设置面板**，需要完成以下初始化：
+`arkcli` 是火山引擎的命令行工具，用于查询 coding plan 用量。**请先完成安装和登录，再安装 HoverMeter。**
+
+```bash
+# 1. 通过 NPM 安装（需要 Node.js ≥ 18）
+npm install -g @volcengine/ark-cli
+
+# 2. 验证安装
+arkcli --version
+
+# 3. 火山 SSO 浏览器登录（推荐）
+arkcli auth login volc-sso
+
+# 4. 确认登录状态
+arkcli auth status
+```
+
+> 详见 [arkcli 官方安装指南](https://www.volcengine.com/docs/82379/2536875?lang=zh)
+
+## 安装 HoverMeter
+
+从 [GitHub Releases](https://github.com/SPYQWER1/HoverMeter/releases) 下载最新版本：
+
+| 格式 | 文件 |
+|------|------|
+| MSI 安装程序 | `HoverMeter_*.msi` |
+| NSIS 安装程序 | `HoverMeter_*-setup.exe` |
+| 绿色免安装 | `hovermeter.exe` |
+
+## 首次启动配置
+
+首次启动 HoverMeter 后，由于尚未配置 DeepSeek API Key，应用会自动弹出**设置面板**：
 
 ### 1. 获取 DeepSeek API Key
 
 登录 [DeepSeek 开放平台](https://platform.deepseek.com/)，在「API Keys」页面创建或复制已有 Key（以 `sk-` 开头）。
 
-### 2. 安装 arkcli
-
-`arkcli` 是火山引擎的命令行工具，用于查询 coding plan 用量。请确保已安装并在系统 PATH 中：
-
-```bash
-# 验证 arkcli 是否可用
-arkcli usage plan
-```
-
-如果命令不可用，请参考[火山引擎文档](https://www.volcengine.com/docs/82379)完成安装。
-
-### 3. 配置设置
-
-在设置面板中填写以下配置项：
+### 2. 填写设置
 
 | 设置项 | 默认值 | 说明 |
 |---------|---------|-------------|
-| DeepSeek API Key | （空） | 用于查询余额的 API 密钥 |
+| DeepSeek API Key | （空） | 上一步获取的 API 密钥 |
 | 刷新间隔 | 5 分钟 | 数据轮询间隔（最小 1 分钟） |
 | 透明度 | 0.85 | 组件透明度（0.5–1.0） |
 
-### 4. 保存并生效
-
-点击「Save」后：
-- API Key 与刷新间隔、透明度一起保存到 JSON 配置文件
-- 刷新间隔和透明度保存为 JSON 配置文件
-- 组件自动开始拉取数据
+点击「Save」后组件自动开始拉取数据。
 
 > 后续可通过系统托盘右键菜单 →「Settings」随时修改配置。
 
-## 开发
+## 开发环境
 
+- **Node.js** ≥ 18 + npm
+- **Rust** 工具链（stable）
+
+## 开发
 ```bash
 # 安装依赖
 npm install
