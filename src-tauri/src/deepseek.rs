@@ -27,24 +27,65 @@ pub struct BalanceInfo {
     pub topped_up_balance: String,
 }
 
-/// Query the DeepSeek balance API.
+const MAX_RETRIES: u32 = 3;
+const RETRY_DELAY_MS: u64 = 800;
+
+/// Query the DeepSeek balance API with retry logic.
 ///
 /// Sends a GET request to `https://api.deepseek.com/user/balance` with
 /// `Authorization: Bearer {api_key}` and returns the parsed response.
+///
+/// Retries transient failures up to `MAX_RETRIES` times with a delay.
+/// Does not retry permanent errors (empty API key, HTTP 401/403).
 ///
 /// # Errors
 ///
 /// Returns `Err` if:
 /// - The API key is empty
-/// - The HTTP request fails (network error, non-200 status)
+/// - The HTTP request fails after all retries (network error, non-200 status)
 /// - The response body cannot be parsed as JSON
 pub async fn get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
+    let mut last_error: Option<String> = None;
+
+    for attempt in 1..=MAX_RETRIES {
+        log::info!(
+            "Fetching DeepSeek balance (attempt {attempt}/{MAX_RETRIES})"
+        );
+
+        match try_get_balance(api_key).await {
+            Ok(balance) => return Ok(balance),
+            Err(e) => {
+                log::warn!("DeepSeek balance fetch attempt {attempt} failed: {e}");
+                last_error = Some(e.clone());
+
+                if is_permanent_error(&e) {
+                    break;
+                }
+
+                if attempt < MAX_RETRIES {
+                    tokio::time::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS))
+                        .await;
+                }
+            }
+        }
+    }
+
+    let err = last_error.unwrap_or_else(|| "未知错误".to_string());
+    log::error!("DeepSeek balance fetch failed after {MAX_RETRIES} attempts: {err}");
+    Err(err)
+}
+
+fn is_permanent_error(error: &str) -> bool {
+    error.contains("API 密钥不能为空")
+        || error.contains("HTTP 401")
+        || error.contains("HTTP 403")
+}
+
+async fn try_get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
     if api_key.is_empty() {
         log::warn!("DeepSeek API key is empty");
         return Err("API 密钥不能为空".to_string());
     }
-
-    log::info!("Fetching DeepSeek balance");
 
     let client = reqwest::Client::new();
 
