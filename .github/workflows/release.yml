@@ -26,4 +26,5 @@ jobs:
           files: |
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*-setup.exe
+            src-tauri/target/release/hovermeter.exe
           generate_release_notes: true
