@@ -323,7 +323,7 @@ function App() {
           onHide={handleHide}
         />
 
-        <div className="widget-body">
+        <div className={`widget-body${deepseekApiKey ? "" : " no-deepseek"}`}>
           {error && (
             <div className="error-bar">
               <span className="error-text">{error}</span>
@@ -351,21 +351,23 @@ function App() {
                 </div>
               </section>
 
-              <section className="section">
-                <span className="section-label">DeepSeek</span>
-                <div className="balance-row">
-                  <span className="balance-label">Balance</span>
-                  <span
-                    className={`balance-value${
-                      balanceAvailable ? "" : " is-unavailable"
-                    }`}
-                  >
-                    {balanceAvailable && balanceInfo
-                      ? `${currencySymbol(balanceInfo.currency)}${balanceInfo.total_balance}`
-                      : "unavailable"}
-                  </span>
-                </div>
-              </section>
+              {deepseekApiKey && (
+                <section className="section">
+                  <span className="section-label">DeepSeek</span>
+                  <div className="balance-row">
+                    <span className="balance-label">Balance</span>
+                    <span
+                      className={`balance-value${
+                        balanceAvailable ? "" : " is-unavailable"
+                      }`}
+                    >
+                      {balanceAvailable && balanceInfo
+                        ? `${currencySymbol(balanceInfo.currency)}${balanceInfo.total_balance}`
+                        : "unavailable"}
+                    </span>
+                  </div>
+                </section>
+              )}
 
               <div className="update-footer">
                 updated {formatBeijingTime(volcanoUsage?.updated_at)}

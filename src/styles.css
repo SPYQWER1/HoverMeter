@@ -231,6 +231,21 @@ body {
   gap: 3px;
 }
 
+/* Volcano section expands when DeepSeek is hidden */
+.widget-body.no-deepseek .section {
+  flex: 1;
+}
+
+.widget-body.no-deepseek .usage-grid {
+  flex: 1;
+  grid-template-rows: 1fr;
+}
+
+.widget-body.no-deepseek .usage-cell {
+  justify-content: center;
+  padding: 6px 4px;
+}
+
 .section-label {
   font-size: 9.5px;
   font-weight: 600;
