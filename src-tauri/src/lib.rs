@@ -30,12 +30,6 @@ impl TrayToggleGuard {
     }
 }
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 /// Open the directory containing the application log files.
 #[tauri::command]
 fn open_log_dir(app: tauri::AppHandle) -> Result<(), String> {
@@ -177,7 +171,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
             open_log_dir,
             deepseek::get_deepseek_balance,
             volcano::get_volcano_usage,

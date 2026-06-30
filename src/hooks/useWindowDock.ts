@@ -31,8 +31,8 @@ export function useWindowDock(hovered: boolean) {
   const slidingRef = useRef(false);
   const savedPosRef = useRef<{ x: number; y: number } | null>(null);
   const winSizeRef = useRef<{ width: number; height: number }>({
-    width: 320,
-    height: 210,
+    width: 290,
+    height: 156,
   });
   const winRef = useRef(getCurrentWebviewWindow());
   const hoveredRef = useRef(hovered);
@@ -154,7 +154,7 @@ export function useWindowDock(hovered: boolean) {
   };
 
   const applyDockVisibility = useCallback(
-    async (edge: DockEdge, bounds: MonitorBounds) => {
+    async (edge: DockEdge, bounds: MonitorBounds, forceVisible = false) => {
       // Don't fight an active user drag; the drag-end timer will re-apply
       // visibility once the user releases the window.
       if (isDraggingRef.current) return;
@@ -165,7 +165,7 @@ export function useWindowDock(hovered: boolean) {
       }
 
       const positions = await getDockedPositions(edge, bounds);
-      const target = hoveredRef.current
+      const target = forceVisible || hoveredRef.current
         ? positions.visible
         : positions.hidden;
 
@@ -448,14 +448,116 @@ export function useWindowDock(hovered: boolean) {
 
     const unlistenFocusPromise = win.onFocusChanged(
       async ({ payload: focused }: { payload: boolean }) => {
-        if (!focused || slidingRef.current) return;
-        await revealWindow();
+        // Only care about losing focus — the show-widget handler and hover
+        // effect already handle revealing. Reacting to focus gain here would
+        // cause the window to pop up whenever another app closes (e.g. cmd).
+        if (focused || slidingRef.current) return;
+
+        const edge = dockRef.current.edge;
+        if (edge && !hoveredRef.current) {
+          try {
+            const monitor = await currentMonitor();
+            if (monitor) {
+              const bounds: MonitorBounds = {
+                x: monitor.position.x,
+                y: monitor.position.y,
+                width: monitor.size.width,
+                height: monitor.size.height,
+              };
+              await applyDockVisibility(edge, bounds);
+            }
+          } catch {
+            // ignore
+          }
+        }
       },
     );
 
     const unlistenShowWidgetPromise = listen("show-widget", async () => {
-      if (slidingRef.current) return;
-      await revealWindow();
+      const win = winRef.current;
+
+      try {
+        await win.show();
+        await win.setFocus();
+      } catch {
+        // ignore
+      }
+
+      // Abort any in-progress slide (likely heading for hidden position
+      // because the onFocusChanged handler raced in first).
+      slideGenerationRef.current += 1;
+      while (slidingRef.current) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+
+      const edge = dockRef.current.edge;
+      if (edge) {
+        // Stay docked — just slide to the fully-visible position.
+        // The normal hover effect will handle hiding when the user
+        // clicks away.
+        try {
+          const monitor = await currentMonitor();
+          if (monitor) {
+            const bounds: MonitorBounds = {
+              x: monitor.position.x,
+              y: monitor.position.y,
+              width: monitor.size.width,
+              height: monitor.size.height,
+            };
+            const positions = await getDockedPositions(edge, bounds);
+            await win.setPosition(
+              new PhysicalPosition(positions.visible.x, positions.visible.y),
+            );
+            // setPosition triggers onMoved, which schedules a drag-end
+            // timer that would slide us back to hidden after 300ms.
+            // Clear it so we stay visible until the user clicks away.
+            if (dragEndTimerRef.current) {
+              clearTimeout(dragEndTimerRef.current);
+              dragEndTimerRef.current = null;
+            }
+            isDraggingRef.current = false;
+          }
+        } catch {
+          // ignore
+        }
+      } else {
+        // Not docked: just make sure the window is on the current monitor.
+        try {
+          const monitor = await currentMonitor();
+          if (monitor) {
+            const bounds: MonitorBounds = {
+              x: monitor.position.x,
+              y: monitor.position.y,
+              width: monitor.size.width,
+              height: monitor.size.height,
+            };
+            const pos = await win.outerPosition();
+            const ww = winSizeRef.current.width;
+            const wh = winSizeRef.current.height;
+
+            const offLeft = pos.x < bounds.x;
+            const offRight = pos.x + ww > bounds.x + bounds.width;
+            const offTop = pos.y < bounds.y;
+            const offBottom = pos.y + wh > bounds.y + bounds.height;
+
+            if (offLeft || offRight || offTop || offBottom) {
+              const targetX = offLeft
+                ? bounds.x
+                : offRight
+                  ? bounds.x + bounds.width - ww
+                  : pos.x;
+              const targetY = offTop
+                ? bounds.y
+                : offBottom
+                  ? bounds.y + bounds.height - wh
+                  : pos.y;
+              await win.setPosition(new PhysicalPosition(targetX, targetY));
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
     });
 
     // Detect drag starts immediately (even during a slide animation) so we can

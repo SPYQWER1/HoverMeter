@@ -86,7 +86,7 @@ fn query_volcano_usage() -> Result<VolcanoUsage, String> {
         }
     }
 
-    let err = last_error.expect("last_error set if loop exits with error");
+    let err = last_error.unwrap_or_else(|| "Unknown error".to_string());
     log::error!("Volcano usage fetch failed after {MAX_RETRIES} attempts: {err}");
     Err(err)
 }

@@ -76,21 +76,6 @@ fn get_keyring(user: &str) -> Result<String, String> {
         })
 }
 
-fn delete_keyring(user: &str) -> Result<(), String> {
-    let entry = keyring::Entry::new(KEYRING_SERVICE, user)
-        .map_err(|e| {
-            let msg = format!("Failed to create keyring entry: {e}");
-            log::error!("{msg}");
-            msg
-        })?;
-    entry
-        .delete_credential()
-        .map_err(|e| {
-            let msg = format!("Failed to delete credential from keyring: {e}");
-            log::error!("{msg}");
-            msg
-        })
-}
 
 // ─── Internal API ─────────────────────────────────
 
@@ -106,11 +91,6 @@ fn load_creds() -> Option<Credentials> {
     Some(Credentials { deepseek_key })
 }
 
-#[allow(dead_code)]
-fn delete_creds() -> Result<(), String> {
-    log::info!("Deleting DeepSeek credentials");
-    delete_keyring(KEYRING_USER_DEEPSEEK)
-}
 
 // ─── Settings Path ───────────────────────────────
 

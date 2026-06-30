@@ -19,7 +19,7 @@ export interface DeepSeekBalance {
 // ──────────────────────────────────────────────
 
 export interface PeriodUsage {
-  label: "session" | "weekly" | "monthly";
+  label: string;
   percent: number;
   reset_at: number;
 }
@@ -27,18 +27,6 @@ export interface PeriodUsage {
 export interface VolcanoUsage {
   periods: PeriodUsage[];
   updated_at: number;
-}
-
-// ──────────────────────────────────────────────
-// Volcano Engine Plan Status Types
-// ──────────────────────────────────────────────
-
-export interface VolcanoPlan {
-  plan_type: string;
-  status: string;
-  start_time: string;
-  end_time: string;
-  auto_renew: boolean;
 }
 
 // ──────────────────────────────────────────────
@@ -51,48 +39,3 @@ export interface AppSettings {
   opacity: number;
 }
 
-// ──────────────────────────────────────────────
-// Tauri Command Types
-// ──────────────────────────────────────────────
-
-/** Response from `get_balance` Tauri command */
-export interface GetBalanceResponse {
-  balance: DeepSeekBalance | null;
-  error?: string;
-}
-
-/** Response from `get_usage` Tauri command */
-export interface GetUsageResponse {
-  usage: VolcanoUsage | null;
-  error?: string;
-}
-
-/** Response from `get_plan` Tauri command */
-export interface GetPlanResponse {
-  plan: VolcanoPlan | null;
-  error?: string;
-}
-
-/** Response from `get_settings` Tauri command */
-export interface GetSettingsResponse {
-  settings: AppSettings | null;
-  error?: string;
-}
-
-/** Request payload for `save_credentials` Tauri command */
-export interface SaveCredentialsRequest {
-  deepseekApiKey: string;
-}
-
-/** Request payload for `save_settings` Tauri command */
-export interface SaveSettingsRequest {
-  refreshInterval?: number;
-  opacity?: number;
-}
-
-/** Generic Tauri command result wrapper */
-export interface CommandResult<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
