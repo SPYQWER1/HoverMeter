@@ -243,9 +243,14 @@
 
 .settings-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   padding: 0 var(--hm-spacing) var(--hm-spacing);
+}
+
+.settings-footer-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .settings-button {

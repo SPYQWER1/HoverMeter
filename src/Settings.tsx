@@ -1,4 +1,5 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import type { AppSettings } from "./types";
 import "./Settings.css";
 
@@ -55,6 +56,14 @@ function Settings({
       refresh_interval: refreshInterval,
       opacity,
     });
+  };
+
+  const handleOpenLogs = async () => {
+    try {
+      await invoke("open_log_dir");
+    } catch (err) {
+      console.error("Failed to open log directory:", err);
+    }
   };
 
   return (
@@ -134,13 +143,22 @@ function Settings({
               <button
                 type="button"
                 className="settings-button settings-button-secondary"
-                onClick={onClose}
+                onClick={handleOpenLogs}
               >
-                Cancel
+                Open Logs
               </button>
-              <button type="submit" className="settings-button">
-                Save
-              </button>
+              <div className="settings-footer-actions">
+                <button
+                  type="button"
+                  className="settings-button settings-button-secondary"
+                  onClick={onClose}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="settings-button">
+                  Save
+                </button>
+              </div>
             </div>
           </form>
         </div>

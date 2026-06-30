@@ -40,8 +40,11 @@ pub struct BalanceInfo {
 /// - The response body cannot be parsed as JSON
 pub async fn get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
     if api_key.is_empty() {
+        log::warn!("DeepSeek API key is empty");
         return Err("API key must not be empty".to_string());
     }
+
+    log::info!("Fetching DeepSeek balance");
 
     let client = reqwest::Client::new();
 
@@ -50,21 +53,30 @@ pub async fn get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
         .header("Authorization", format!("Bearer {}", api_key))
         .send()
         .await
-        .map_err(|e| format!("HTTP request failed: {}", e))?;
+        .map_err(|e| {
+            let msg = format!("HTTP request failed: {}", e);
+            log::error!("{msg}");
+            msg
+        })?;
 
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        return Err(format!(
-            "DeepSeek API returned HTTP {}: {}",
-            status, body
-        ));
+        let msg = format!("DeepSeek API returned HTTP {}: {}", status, body);
+        log::error!("{msg}");
+        return Err(msg);
     }
 
     let balance: DeepSeekBalance = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse DeepSeek response: {}", e))?;
+        .map_err(|e| {
+            let msg = format!("Failed to parse DeepSeek response: {}", e);
+            log::error!("{msg}");
+            msg
+        })?;
+
+    log::info!("DeepSeek balance fetched successfully");
 
     Ok(balance)
 }
@@ -72,5 +84,6 @@ pub async fn get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
 /// Tauri command: query DeepSeek balance.
 #[tauri::command]
 pub async fn get_deepseek_balance(api_key: String) -> Result<DeepSeekBalance, String> {
+    log::info!("get_deepseek_balance command invoked");
     get_balance(&api_key).await
 }

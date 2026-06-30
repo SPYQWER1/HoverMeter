@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "HoverMeter",
-        "width": 320,
-        "height": 210,
+        "width": 290,
+        "height": 156,
         "alwaysOnTop": true,
         "transparent": true,
         "decorations": false,

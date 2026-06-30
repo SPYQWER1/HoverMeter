@@ -41,20 +41,57 @@ struct ArkcliPeriod {
     reset_at: i64,
 }
 
+const MAX_RETRIES: u32 = 3;
+const RETRY_DELAY_MS: u64 = 800;
+
 /// Run `arkcli usage plan` and parse the coding-plan usage data.
 ///
 /// Executes the `arkcli` CLI tool, captures its JSON stdout, and extracts
 /// the `coding-plan` item's periods and `updated_at` timestamp.
 ///
+/// Retries transient failures (e.g. temporary auth/STS errors) a few times
+/// before giving up. Does not retry if `arkcli` itself is missing.
+///
 /// # Errors
 ///
 /// Returns `Err(String)` if:
 /// - `arkcli` is not installed or not on PATH
-/// - The command exits with a non-zero status
+/// - The command exits with a non-zero status after all retries
 /// - stdout is not valid UTF-8
 /// - The JSON cannot be parsed
 /// - No `coding-plan` item is found in the output
 fn query_volcano_usage() -> Result<VolcanoUsage, String> {
+    let mut last_error: Option<String> = None;
+
+    for attempt in 1..=MAX_RETRIES {
+        log::info!(
+            "Fetching Volcano Engine usage via arkcli (attempt {attempt}/{MAX_RETRIES})"
+        );
+
+        match try_query_volcano_usage() {
+            Ok(usage) => return Ok(usage),
+            Err(e) => {
+                log::warn!("Volcano usage fetch attempt {attempt} failed: {e}");
+                last_error = Some(e.clone());
+
+                // If arkcli is not installed, retrying won't help.
+                if e.contains("not installed or not found on PATH") {
+                    break;
+                }
+
+                if attempt < MAX_RETRIES {
+                    std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+                }
+            }
+        }
+    }
+
+    let err = last_error.expect("last_error set if loop exits with error");
+    log::error!("Volcano usage fetch failed after {MAX_RETRIES} attempts: {err}");
+    Err(err)
+}
+
+fn try_query_volcano_usage() -> Result<VolcanoUsage, String> {
     let output = run_arkcli_usage_plan().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             "arkcli is not installed or not found on PATH. \
@@ -86,7 +123,7 @@ fn query_volcano_usage() -> Result<VolcanoUsage, String> {
                 .to_string()
         })?;
 
-    let periods = coding_plan
+    let periods: Vec<PeriodUsage> = coding_plan
         .periods
         .into_iter()
         .map(|p| PeriodUsage {
@@ -100,6 +137,8 @@ fn query_volcano_usage() -> Result<VolcanoUsage, String> {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
+
+    log::info!("Volcano usage fetched successfully ({} periods)", periods.len());
 
     Ok(VolcanoUsage {
         periods,
@@ -165,9 +204,14 @@ fn run_arkcli_usage_plan() -> Result<std::process::Output, std::io::Error> {
 
 #[tauri::command]
 pub async fn get_volcano_usage() -> Result<VolcanoUsage, String> {
+    log::info!("get_volcano_usage command invoked");
     tokio::task::spawn_blocking(query_volcano_usage)
         .await
-        .map_err(|e| format!("arkcli task failed: {e}"))?
+        .map_err(|e| {
+            let msg = format!("arkcli task failed: {e}");
+            log::error!("{msg}");
+            msg
+        })?
 }
 
 #[cfg(test)]

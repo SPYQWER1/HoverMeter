@@ -38,7 +38,9 @@ export function useWindowDock(hovered: boolean) {
   const hoveredRef = useRef(hovered);
   const isDraggingRef = useRef(false);
   const dragEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingDockCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingApplyRef = useRef(false);
+  const slideGenerationRef = useRef(0);
   const applyDockVisibilityRef = useRef<
     ((edge: DockEdge, bounds: MonitorBounds) => Promise<void>) | null
   >(null);
@@ -51,7 +53,18 @@ export function useWindowDock(hovered: boolean) {
   }, []);
 
   const slideTo = useCallback(async (targetX: number, targetY: number) => {
-    if (slidingRef.current) return;
+    // Each slide call gets a new generation. If a later slide is requested
+    // (or the user starts dragging), the generation changes and this loop
+    // aborts so the window isn't fighting the user's drag.
+    const generation = ++slideGenerationRef.current;
+
+    if (slidingRef.current) {
+      // A slide is already running; the generation bump will cause it to abort
+      // and the caller (applyDockVisibility) will queue a new slide via
+      // pendingApplyRef if needed.
+      return;
+    }
+
     slidingRef.current = true;
 
     try {
@@ -61,6 +74,11 @@ export function useWindowDock(hovered: boolean) {
       const stepMs = SLIDE_DURATION_MS / SLIDE_STEPS;
 
       for (let i = 1; i <= SLIDE_STEPS; i++) {
+        // Abort if a newer slide was requested or the user started dragging.
+        if (generation !== slideGenerationRef.current || isDraggingRef.current) {
+          return;
+        }
+
         const t = i / SLIDE_STEPS;
         const eased = 1 - (1 - t) * (1 - t);
         const curX = Math.round(startX + (targetX - startX) * eased);
@@ -137,13 +155,17 @@ export function useWindowDock(hovered: boolean) {
 
   const applyDockVisibility = useCallback(
     async (edge: DockEdge, bounds: MonitorBounds) => {
+      // Don't fight an active user drag; the drag-end timer will re-apply
+      // visibility once the user releases the window.
+      if (isDraggingRef.current) return;
+
       if (slidingRef.current) {
         pendingApplyRef.current = true;
         return;
       }
 
       const positions = await getDockedPositions(edge, bounds);
-      const target = hoveredRef.current || isDraggingRef.current
+      const target = hoveredRef.current
         ? positions.visible
         : positions.hidden;
 
@@ -322,10 +344,11 @@ export function useWindowDock(hovered: boolean) {
         /* ignore */
       });
 
-    let pendingDockCheck: ReturnType<typeof setTimeout> | null = null;
-
     const scheduleDragEnd = () => {
       isDraggingRef.current = true;
+      // Abort any in-progress slide so the user's drag isn't fighting
+      // programmatic setPosition calls.
+      slideGenerationRef.current += 1;
       if (dragEndTimerRef.current) {
         clearTimeout(dragEndTimerRef.current);
       }
@@ -352,10 +375,14 @@ export function useWindowDock(hovered: boolean) {
 
     const unlistenMovedPromise = win.onMoved(
       (_event: { payload: PhysicalPosition }) => {
+        // Skip all move processing during slide animation to prevent
+        // drag-end timers from firing setPosition on a hidden window.
+        if (slidingRef.current) return;
+
         scheduleDragEnd();
 
-        if (pendingDockCheck) clearTimeout(pendingDockCheck);
-        pendingDockCheck = setTimeout(async () => {
+        if (pendingDockCheckRef.current) clearTimeout(pendingDockCheckRef.current);
+        pendingDockCheckRef.current = setTimeout(async () => {
           if (slidingRef.current) return;
 
           if (dockRef.current.edge) {
@@ -378,57 +405,27 @@ export function useWindowDock(hovered: boolean) {
               const wh = winSizeRef.current.height;
               const edge = dockRef.current.edge;
 
-              let dockedX: number;
-              let dockedY: number;
-
+              // If the user has dragged the window away from the docked edge,
+              // undock and keep the window exactly where they dragged it.
+              let draggedAway = false;
               switch (edge) {
                 case "left":
-                  dockedX = bounds.x - ww + VISIBLE_STRIP;
-                  dockedY = y;
+                  draggedAway = x > bounds.x + UNDOCK_THRESHOLD;
                   break;
                 case "right":
-                  dockedX = bounds.x + bounds.width - VISIBLE_STRIP;
-                  dockedY = y;
+                  draggedAway = x + ww < bounds.x + bounds.width - UNDOCK_THRESHOLD;
                   break;
                 case "top":
-                  dockedX = x;
-                  dockedY = bounds.y - wh + VISIBLE_STRIP;
+                  draggedAway = y > bounds.y + UNDOCK_THRESHOLD;
                   break;
                 case "bottom":
-                  dockedX = x;
-                  dockedY = bounds.y + bounds.height - VISIBLE_STRIP;
+                  draggedAway = y + wh < bounds.y + bounds.height - UNDOCK_THRESHOLD;
                   break;
-                default:
-                  return;
               }
 
-              const dx = Math.abs(x - dockedX);
-              const dy = Math.abs(y - dockedY);
-
-              if (dx > UNDOCK_THRESHOLD || dy > UNDOCK_THRESHOLD) {
-                // Dragged away from the docked hidden position:
-                // slide fully into view at the edge and undock.
-                let targetX = x;
-                let targetY = y;
-                switch (edge) {
-                  case "left":
-                    targetX = bounds.x;
-                    break;
-                  case "right":
-                    targetX = bounds.x + bounds.width - ww;
-                    break;
-                  case "top":
-                    targetY = bounds.y;
-                    break;
-                  case "bottom":
-                    targetY = bounds.y + bounds.height - wh;
-                    break;
-                }
-                savedPosRef.current = { x: targetX, y: targetY };
+              if (draggedAway) {
+                savedPosRef.current = { x, y };
                 setDock(null);
-                await win.setPosition(
-                  new PhysicalPosition(targetX, targetY),
-                );
               }
             } catch {
               // ignore
@@ -461,9 +458,23 @@ export function useWindowDock(hovered: boolean) {
       await revealWindow();
     });
 
+    // Detect drag starts immediately (even during a slide animation) so we can
+    // abort programmatic movement and avoid fighting the user's drag.
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Ignore clicks on interactive controls; the title-bar buttons live inside
+      // the drag region and should not start a drag.
+      if (target.closest("button, a, input, textarea, select")) return;
+      if (target.closest("[data-tauri-drag-region]")) {
+        scheduleDragEnd();
+      }
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+
     return () => {
-      if (pendingDockCheck) clearTimeout(pendingDockCheck);
+      if (pendingDockCheckRef.current) clearTimeout(pendingDockCheckRef.current);
       if (dragEndTimerRef.current) clearTimeout(dragEndTimerRef.current);
+      document.removeEventListener("mousedown", handleMouseDown);
       unlistenMovedPromise.then((fn) => fn());
       unlistenResizedPromise.then((fn) => fn());
       unlistenFocusPromise.then((fn) => fn());
@@ -511,6 +522,14 @@ export function useWindowDock(hovered: boolean) {
     // Windows become unresponsive.
     while (slidingRef.current) {
       await new Promise((r) => setTimeout(r, 30));
+    }
+    if (dragEndTimerRef.current) {
+      clearTimeout(dragEndTimerRef.current);
+      dragEndTimerRef.current = null;
+    }
+    if (pendingDockCheckRef.current) {
+      clearTimeout(pendingDockCheckRef.current);
+      pendingDockCheckRef.current = null;
     }
   }, []);
 

@@ -9,6 +9,8 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager, WindowEvent,
 };
+use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
+use tauri_plugin_opener::OpenerExt;
 
 /// Simple guard to ignore rapid consecutive tray toggles, which can deadlock
 /// WebView2 on Windows when combined with transparent always-on-top windows.
@@ -34,6 +36,23 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+/// Open the directory containing the application log files.
+#[tauri::command]
+fn open_log_dir(app: tauri::AppHandle) -> Result<(), String> {
+    let log_dir = app
+        .path()
+        .app_log_dir()
+        .map_err(|e| format!("Failed to resolve log directory: {e}"))?;
+
+    log::info!("Opening log directory: {:?}", log_dir);
+
+    app.opener()
+        .open_path(log_dir.to_string_lossy(), None::<&str>)
+        .map_err(|e| format!("Failed to open log directory: {e}"))?;
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
@@ -49,6 +68,19 @@ pub fn run() {
     }
 
     builder
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    Target::new(TargetKind::LogDir {
+                        file_name: Some("hovermeter".to_string()),
+                    }),
+                    Target::new(TargetKind::Webview),
+                ])
+                .rotation_strategy(RotationStrategy::KeepAll)
+                .max_file_size(1_000_000) // 1 MB
+                .level(log::LevelFilter::Info)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -61,17 +93,21 @@ pub fn run() {
             // Close hides to tray instead of quitting. Let the frontend handle the
             // actual hide so it can wait for any window animations to finish first.
             if let WindowEvent::CloseRequested { api, .. } = event {
+                log::info!("Close requested; hiding to tray instead of quitting");
                 api.prevent_close();
                 let _ = window.emit("hide-requested", ());
             }
         })
         .setup(|app| {
+            log::info!("HoverMeter starting up");
+
             // Build tray menu: Show Widget / Settings / --- / Quit
             let show_widget = MenuItem::with_id(app, "show", "Show Widget", true, None::<&str>)?;
             let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
+            let logs = MenuItem::with_id(app, "logs", "Open Logs", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_widget, &settings, &separator, &quit])?;
+            let menu = Menu::with_items(app, &[&show_widget, &settings, &logs, &separator, &quit])?;
 
             TrayIconBuilder::with_id("main-tray")
                 .icon(
@@ -97,7 +133,13 @@ pub fn run() {
                             let _ = window.set_focus();
                         }
                     }
+                    "logs" => {
+                        if let Err(e) = open_log_dir(app.clone()) {
+                            log::error!("Failed to open log directory from tray: {e}");
+                        }
+                    }
                     "quit" => {
+                        log::info!("Quit requested from tray menu");
                         app.exit(0);
                     }
                     _ => {}
@@ -136,6 +178,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             greet,
+            open_log_dir,
             deepseek::get_deepseek_balance,
             volcano::get_volcano_usage,
             storage::save_credentials,

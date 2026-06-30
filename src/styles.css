@@ -1,6 +1,6 @@
 /* ──────────────────────────────────────────────
    HoverMeter — Dark theme design system
-   320x180 transparent always-on-top widget
+   290×156 transparent always-on-top widget
    ────────────────────────────────────────────── */
 
 :root {
@@ -97,11 +97,11 @@ body {
 
 /* ── Title bar (drag region) ── */
 .title-bar {
-  height: 28px;
-  flex: 0 0 28px;
+  height: 24px;
+  flex: 0 0 24px;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   padding: 0 var(--space-2);
   background: var(--bg-titlebar);
   border-bottom: 1px solid var(--border-subtle);
@@ -137,8 +137,8 @@ body {
 }
 
 .icon-btn {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -147,7 +147,7 @@ body {
   color: var(--text-secondary);
   border-radius: var(--radius-pill);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1;
   transition: background var(--transition-fast), color var(--transition-fast);
   -webkit-app-region: no-drag;
@@ -218,17 +218,17 @@ body {
 .widget-body {
   flex: 1;
   overflow: hidden;
-  padding: var(--space-2) var(--space-3) var(--space-2);
+  padding: 5px 10px 3px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 5px;
 }
 
 /* ── Sections ── */
 .section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
 }
 
 .section-label {
@@ -243,18 +243,18 @@ body {
 .usage-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 5px;
 }
 
 .usage-cell {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-cell);
-  padding: 5px 4px;
+  padding: 3px 2px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
+  gap: 0;
 }
 
 .usage-label {
@@ -265,7 +265,7 @@ body {
 
 .usage-value {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -293,17 +293,17 @@ body {
   background: var(--accent-deepseek-soft);
   border: 1px solid var(--accent-deepseek-border);
   border-radius: var(--radius-cell);
-  padding: 6px 8px;
+  padding: 4px 7px;
 }
 
 .balance-label {
-  font-size: 10px;
+  font-size: 9.5px;
   color: var(--text-secondary);
 }
 
 .balance-value {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--accent-deepseek);
 }
@@ -319,9 +319,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-shrink: 0;
+  min-height: 12px;
   font-size: 9px;
   color: var(--text-muted);
-  margin-top: auto;
+  padding-top: 1px;
+  line-height: 1.2;
 }
-
 

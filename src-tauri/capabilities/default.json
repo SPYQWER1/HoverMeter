@@ -16,6 +16,16 @@
     "autostart:default",
     "window-state:default",
     "positioner:default",
-    "core:tray:default"
+    "core:tray:default",
+    "log:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        { "path": "$APPLOG" },
+        { "path": "$APPLOG/**" },
+        { "path": "$APPDATA" },
+        { "path": "$APPDATA/**" }
+      ]
+    }
   ]
 }

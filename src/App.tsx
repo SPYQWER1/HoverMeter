@@ -164,7 +164,11 @@ function App() {
   const pendingWindowStateSave = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [widgetHovered, setWidgetHovered] = useState(false);
-  const { dockState, prepareForHide } = useWindowDock(widgetHovered);
+  // Keep the docked widget revealed while the settings panel is open,
+  // otherwise moving the cursor onto the settings overlay would make the
+  // widget think the mouse left and slide back/hide.
+  const effectiveHovered = widgetHovered || showSettings;
+  const { dockState, prepareForHide } = useWindowDock(effectiveHovered);
 
   const dockStateRef = useRef(dockState.edge);
   dockStateRef.current = dockState.edge;
