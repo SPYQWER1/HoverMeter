@@ -11,8 +11,7 @@
 - **透明窗口** — 可调节透明度，始终置顶，不在任务栏显示
 - **系统托盘** — 左键点击切换窗口显隐；右键菜单（显示 / 设置 / 打开日志 / 退出）
 - **关闭即隐藏** — 关闭窗口时隐藏到托盘而非退出
-- **凭证安全存储** — API Key 通过系统密钥链加密保存
-- **设置持久化** — 刷新间隔和透明度以 JSON 形式保存在应用数据目录
+- **设置持久化** — 所有配置（含 API Key）以 JSON 形式保存在应用数据目录
 
 ## 截图
 
@@ -25,7 +24,7 @@
 | 前端 | React 19、TypeScript 5.8、Vite 7 |
 | 后端 | Rust（Tauri v2） |
 | 接口 | DeepSeek REST API、`arkcli` CLI |
-| 存储 | 系统密钥链（`keyring` crate）、JSON 文件 |
+| 存储 | JSON 文件 |
 | 窗口 | 透明、始终置顶、无边框 |
 
 ## 环境要求
@@ -33,7 +32,6 @@
 - **Node.js** ≥ 18 + npm
 - **Rust** 工具链（stable）
 - **`arkcli`** 已安装并在 PATH 中（用于获取火山引擎 coding plan 用量数据）— [安装指南](https://www.volcengine.com/docs/82379)
-- 系统密钥链访问权限（Linux：`libsecret` / `gnome-keyring`）
 
 ## 初始化配置
 
@@ -67,7 +65,7 @@ arkcli usage plan
 ### 4. 保存并生效
 
 点击「Save」后：
-- API Key 加密存入系统密钥链
+- API Key 与刷新间隔、透明度一起保存到 JSON 配置文件
 - 刷新间隔和透明度保存为 JSON 配置文件
 - 组件自动开始拉取数据
 
@@ -116,7 +114,7 @@ src-tauri/src/             后端（Rust）
 ├── lib.rs                  应用初始化、系统托盘、Tauri 命令
 ├── volcano.rs              arkcli 子进程封装
 ├── deepseek.rs             DeepSeek HTTP API 客户端
-├── storage.rs              密钥链 + JSON 设置持久化
+├── storage.rs              JSON 设置持久化
 └── main.rs                 入口文件
 ```
 
