@@ -11,9 +11,11 @@ src/App.tsx          main widget UI       src-tauri/src/lib.rs     app setup, tr
 src/Settings.tsx     settings panel       src-tauri/src/volcano.rs  arkcli subprocess wrapper
 src/hooks/useUsageData.ts  data fetch     src-tauri/src/deepseek.rs DeepSeek HTTP API
 src/types/index.ts   shared TS types      src-tauri/src/storage.rs  keyring + JSON settings
+src/utils/log.ts     frontend logging     src-tauri/src/main.rs     entry point
 ```
 
-- Window: 320×180, transparent, always-on-top, no decorations, starts hidden (`visible: false` in `tauri.conf.json`), shown by JS on mount.
+- Window: 290×156, transparent, always-on-top, no decorations, not resizable, skip taskbar, no shadow, starts hidden (`visible: false` in `tauri.conf.json`), shown by JS on mount.
+- `tsconfig.json` has `noUnusedLocals: true` + `noUnusedParameters: true` — unused imports/vars are compile errors.
 - Credentials stored in OS keyring (`keyring` crate). Settings stored as JSON in Tauri app data dir.
 - Volcano usage: Rust spawns `arkcli usage plan` subprocess, parses JSON stdout.
 - DeepSeek balance: Rust calls `GET https://api.deepseek.com/user/balance` with Bearer token.
@@ -100,10 +102,10 @@ Recommended flow:
 - **No linter or formatter configured** for the frontend. No ESLint, no Prettier.
 - **No frontend test framework.** Only Rust unit tests exist (`cargo test`).
 - **`npm run build` runs `tsc` first** — type errors block the build.
-- **`src/App.css` is dead code** — not imported anywhere. `main.tsx` only imports `styles.css`.
-- **`greet` command** in `lib.rs` is a Tauri template leftover, still registered but unused.
+- **`greet` command** in `lib.rs` is a Tauri template leftover, still registered but unused. So is `open_log_dir`, but that one IS wired to the tray "Open Logs" menu item.
+- **`src/App.css` is dead code** — not imported anywhere. `main.tsx` only imports `styles.css`. `src/assets/react.svg` is also a template leftover.
 - **`index.html` title** still says "Tauri + React + Typescript" (template leftover).
 - **`keyring` crate** needs OS keychain access. On headless Linux, this may require `gnome-keyring` or `libsecret`.
 - **Tauri dev uses fixed port 1420** with `strictPort: true`. If port is occupied, it fails.
 - **Window close is intercepted** — close hides to tray instead of quitting. Quit via tray menu.
-- **Tray icon**: left-click toggles window visibility, right-click shows menu (Show/Settings/Quit).
+- **Tray icon**: left-click toggles window visibility, right-click shows menu (Show/Settings/Open Logs/Quit).
