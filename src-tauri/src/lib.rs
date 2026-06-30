@@ -153,15 +153,9 @@ pub fn run() {
                         }
 
                         if let Some(window) = app.get_webview_window("main") {
-                            if window.is_visible().unwrap_or(false) {
-                                // Ask the frontend to hide so any in-flight dock
-                                // animation can settle first.
-                                let _ = window.emit("hide-requested", ());
-                            } else {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                                let _ = window.emit("show-widget", ());
-                            }
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.emit("show-widget", ());
                         }
 
                         guard.release();

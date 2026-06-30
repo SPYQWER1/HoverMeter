@@ -635,8 +635,67 @@ export function useWindowDock(hovered: boolean) {
     }
   }, []);
 
+  const forceHideToDock = useCallback(async () => {
+    if (slidingRef.current) return;
+
+    const edge = dockRef.current.edge;
+    if (edge) {
+      try {
+        const monitor = await currentMonitor();
+        if (!monitor) return;
+        const bounds: MonitorBounds = {
+          x: monitor.position.x,
+          y: monitor.position.y,
+          width: monitor.size.width,
+          height: monitor.size.height,
+        };
+        await applyDockVisibility(edge, bounds);
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
+    try {
+      const pos = await winRef.current.outerPosition();
+      const monitor = await currentMonitor();
+      if (!monitor) return;
+
+      const bounds: MonitorBounds = {
+        x: monitor.position.x,
+        y: monitor.position.y,
+        width: monitor.size.width,
+        height: monitor.size.height,
+      };
+
+      const ww = winSizeRef.current.width;
+      const wh = winSizeRef.current.height;
+
+      const distLeft = Math.abs(pos.x - bounds.x);
+      const distRight = Math.abs(bounds.x + bounds.width - (pos.x + ww));
+      const distTop = Math.abs(pos.y - bounds.y);
+      const distBottom = Math.abs(bounds.y + bounds.height - (pos.y + wh));
+
+      const distances: { edge: DockEdge; dist: number }[] = [
+        { edge: "left", dist: distLeft },
+        { edge: "right", dist: distRight },
+        { edge: "top", dist: distTop },
+        { edge: "bottom", dist: distBottom },
+      ];
+      distances.sort((a, b) => a.dist - b.dist);
+
+      const nearest = distances[0];
+      savedPosRef.current = { x: pos.x, y: pos.y };
+      setDock(nearest.edge);
+      await applyDockVisibility(nearest.edge, bounds);
+    } catch {
+      // ignore
+    }
+  }, [applyDockVisibility, setDock]);
+
   return {
     dockState,
     prepareForHide,
+    forceHideToDock,
   };
 }

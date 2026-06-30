@@ -38,6 +38,7 @@ export function useUsageData(
   const deepseekApiKeyRef = useRef(deepseekApiKey);
   deepseekApiKeyRef.current = deepseekApiKey;
   const fetchInProgress = useRef(false);
+  const pendingRefetch = useRef(false);
 
   const fetchData = useCallback(async (isInitial: boolean) => {
     if (fetchInProgress.current) return;
@@ -81,12 +82,28 @@ export function useUsageData(
       setLoading(false);
       setRefreshing(false);
       fetchInProgress.current = false;
+      if (pendingRefetch.current) {
+        pendingRefetch.current = false;
+        fetchData(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     fetchData(true);
   }, [fetchData]);
+
+  const prevKeyRef = useRef(deepseekApiKey);
+  useEffect(() => {
+    if (!prevKeyRef.current && deepseekApiKey) {
+      if (fetchInProgress.current) {
+        pendingRefetch.current = true;
+      } else {
+        fetchData(false);
+      }
+    }
+    prevKeyRef.current = deepseekApiKey;
+  }, [deepseekApiKey, fetchData]);
 
   useEffect(() => {
     const ms = Math.max(30_000, refreshIntervalMinutes * 60_000);

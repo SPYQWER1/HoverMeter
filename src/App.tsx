@@ -165,7 +165,7 @@ function App() {
   // otherwise moving the cursor onto the settings overlay would make the
   // widget think the mouse left and slide back/hide.
   const effectiveHovered = widgetHovered || showSettings;
-  const { dockState, prepareForHide } = useWindowDock(effectiveHovered);
+  const { dockState, forceHideToDock } = useWindowDock(effectiveHovered);
 
   const dockStateRef = useRef(dockState.edge);
   dockStateRef.current = dockState.edge;
@@ -267,18 +267,13 @@ function App() {
     hidingRef.current = true;
 
     try {
-      const win = getCurrentWebviewWindow();
-      const visible = await win.isVisible();
-      if (!visible) return;
-
-      await prepareForHide();
-      await win.hide();
+      await forceHideToDock();
     } catch (err: unknown) {
       console.error("failed to hide window:", err);
     } finally {
       hidingRef.current = false;
     }
-  }, [prepareForHide]);
+  }, [forceHideToDock]);
 
   const handleSaveSettings = async (settings: AppSettings) => {
     try {
