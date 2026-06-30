@@ -9,8 +9,8 @@
   --hm-text-muted: #9393a8;
   --hm-accent: #4a9eff;
   --hm-accent-hover: #3a8ae5;
-  --hm-radius: 10px;
-  --hm-radius-sm: 6px;
+  --hm-radius: 12px;
+  --hm-radius-sm: 8px;
   --hm-spacing: 12px;
   --hm-font: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
 
@@ -20,9 +20,7 @@
   align-items: flex-start;
   justify-content: center;
   padding: 4px;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: transparent;
   z-index: 1000;
   box-sizing: border-box;
   overflow: hidden;
