@@ -36,13 +36,13 @@ fn open_log_dir(app: tauri::AppHandle) -> Result<(), String> {
     let log_dir = app
         .path()
         .app_log_dir()
-        .map_err(|e| format!("Failed to resolve log directory: {e}"))?;
+        .map_err(|e| format!("无法解析日志目录: {e}"))?;
 
     log::info!("Opening log directory: {:?}", log_dir);
 
     app.opener()
         .open_path(log_dir.to_string_lossy(), None::<&str>)
-        .map_err(|e| format!("Failed to open log directory: {e}"))?;
+        .map_err(|e| format!("无法打开日志目录: {e}"))?;
 
     Ok(())
 }
@@ -70,8 +70,8 @@ pub fn run() {
                     }),
                     Target::new(TargetKind::Webview),
                 ])
-                .rotation_strategy(RotationStrategy::KeepAll)
-                .max_file_size(1_000_000) // 1 MB
+                .rotation_strategy(RotationStrategy::KeepOne)
+                .max_file_size(100_000) // 100 KB
                 .level(log::LevelFilter::Info)
                 .build(),
         )
@@ -95,12 +95,12 @@ pub fn run() {
         .setup(|app| {
             log::info!("HoverMeter starting up");
 
-            // Build tray menu: Show Widget / Settings / --- / Quit
-            let show_widget = MenuItem::with_id(app, "show", "Show Widget", true, None::<&str>)?;
-            let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
-            let logs = MenuItem::with_id(app, "logs", "Open Logs", true, None::<&str>)?;
+            // Build tray menu: 显示面板 / 设置 / 打开日志 / --- / 退出
+            let show_widget = MenuItem::with_id(app, "show", "显示面板", true, None::<&str>)?;
+            let settings = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
+            let logs = MenuItem::with_id(app, "logs", "打开日志", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_widget, &settings, &logs, &separator, &quit])?;
 
             TrayIconBuilder::with_id("main-tray")

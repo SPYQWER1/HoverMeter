@@ -75,7 +75,7 @@ fn query_volcano_usage() -> Result<VolcanoUsage, String> {
                 last_error = Some(e.clone());
 
                 // If arkcli is not installed, retrying won't help.
-                if e.contains("not installed or not found on PATH") {
+                if e.contains("未安装") {
                     break;
                 }
 
@@ -86,7 +86,7 @@ fn query_volcano_usage() -> Result<VolcanoUsage, String> {
         }
     }
 
-    let err = last_error.unwrap_or_else(|| "Unknown error".to_string());
+    let err = last_error.unwrap_or_else(|| "未知错误".to_string());
     log::error!("Volcano usage fetch failed after {MAX_RETRIES} attempts: {err}");
     Err(err)
 }
@@ -94,11 +94,10 @@ fn query_volcano_usage() -> Result<VolcanoUsage, String> {
 fn try_query_volcano_usage() -> Result<VolcanoUsage, String> {
     let output = run_arkcli_usage_plan().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
-            "arkcli is not installed or not found on PATH. \
-             Install it from https://www.volcengine.com/docs/82379"
+            "arkcli 未安装或不在 PATH 中，请从 https://www.volcengine.com/docs/82379 安装"
                 .to_string()
         } else {
-            format!("Failed to run arkcli: {}", e)
+            format!("运行 arkcli 失败: {}", e)
         }
     })?;
 
@@ -108,18 +107,17 @@ fn try_query_volcano_usage() -> Result<VolcanoUsage, String> {
     }
 
     let stdout = String::from_utf8(output.stdout)
-        .map_err(|e| format!("arkcli output is not valid UTF-8: {}", e))?;
+        .map_err(|e| format!("arkcli 输出不是有效的 UTF-8: {}", e))?;
 
     let parsed: ArkcliOutput = serde_json::from_str(&stdout)
-        .map_err(|e| format!("Failed to parse arkcli JSON output: {}", e))?;
+        .map_err(|e| format!("解析 arkcli JSON 输出失败: {}", e))?;
 
     let coding_plan = parsed
         .items
         .into_iter()
         .find(|item| item.product == "coding-plan")
         .ok_or_else(|| {
-            "No coding-plan item found in arkcli output. \
-             Is your Coding Plan subscription active?"
+            "未在 arkcli 输出中找到 coding-plan 项目，Coding Plan 订阅是否有效？"
                 .to_string()
         })?;
 
@@ -151,7 +149,7 @@ fn friendly_arkcli_error(status: std::process::ExitStatus, stderr: &str) -> Stri
     if stderr_looks_like_auth_error(stderr) {
         "arkcli 登录已过期，请在终端运行 `arkcli auth login volc-sso` 重新登录。".to_string()
     } else {
-        format!("arkcli exited with status {}: {}", status, stderr.trim())
+        format!("arkcli 退出，状态码 {}: {}", status, stderr.trim())
     }
 }
 
@@ -208,7 +206,7 @@ pub async fn get_volcano_usage() -> Result<VolcanoUsage, String> {
     tokio::task::spawn_blocking(query_volcano_usage)
         .await
         .map_err(|e| {
-            let msg = format!("arkcli task failed: {e}");
+            let msg = format!("arkcli 任务失败: {e}");
             log::error!("{msg}");
             msg
         })?

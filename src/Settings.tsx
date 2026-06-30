@@ -71,7 +71,7 @@ function Settings({
       className="settings-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="Settings"
+        aria-label="设置"
       onClick={onClose}
     >
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
@@ -93,7 +93,7 @@ function Settings({
 
           <section className="settings-section">
             <label className="settings-row">
-              <span className="settings-label">Refresh Interval</span>
+              <span className="settings-label">刷新间隔</span>
               <div className="settings-inline-input">
                 <input
                   type="number"
@@ -103,12 +103,12 @@ function Settings({
                   value={refreshInterval}
                   onChange={handleRefreshChange}
                 />
-                <span className="settings-suffix">min</span>
+                <span className="settings-suffix">分钟</span>
               </div>
             </label>
 
             <label className="settings-row">
-              <span className="settings-label">Opacity</span>
+              <span className="settings-label">不透明度</span>
               <div className="settings-inline-input">
                 <input
                   type="range"
@@ -130,7 +130,7 @@ function Settings({
               className="settings-text-button"
               onClick={handleOpenLogs}
             >
-              Open Logs
+              打开日志
             </button>
             <div className="settings-footer-actions">
               <button
@@ -138,10 +138,10 @@ function Settings({
                 className="settings-button settings-button-secondary"
                 onClick={onClose}
               >
-                Cancel
+                取消
               </button>
               <button type="submit" className="settings-button">
-                Save
+                保存
               </button>
             </div>
           </div>

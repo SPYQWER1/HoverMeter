@@ -41,13 +41,13 @@ fn settings_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
         .path()
         .app_data_dir()
         .map_err(|e| {
-            let msg = format!("Failed to resolve app data directory: {e}");
+            let msg = format!("无法解析应用数据目录: {e}");
             log::error!("{msg}");
             msg
         })?;
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| {
-            let msg = format!("Failed to create app data directory {data_dir:?}: {e}");
+            let msg = format!("无法创建应用数据目录 {data_dir:?}: {e}");
             log::error!("{msg}");
             msg
         })?;
@@ -73,12 +73,12 @@ fn save_setts(
     };
     let json = serde_json::to_string_pretty(&settings)
         .map_err(|e| {
-            let msg = format!("Failed to serialize settings: {e}");
+            let msg = format!("序列化设置失败: {e}");
             log::error!("{msg}");
             msg
         })?;
     std::fs::write(&path, json).map_err(|e| {
-        let msg = format!("Failed to write settings to {path:?}: {e}");
+        let msg = format!("写入设置到 {path:?} 失败: {e}");
         log::error!("{msg}");
         msg
     })

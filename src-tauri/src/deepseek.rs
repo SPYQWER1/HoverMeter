@@ -41,7 +41,7 @@ pub struct BalanceInfo {
 pub async fn get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
     if api_key.is_empty() {
         log::warn!("DeepSeek API key is empty");
-        return Err("API key must not be empty".to_string());
+        return Err("API 密钥不能为空".to_string());
     }
 
     log::info!("Fetching DeepSeek balance");
@@ -54,7 +54,7 @@ pub async fn get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
         .send()
         .await
         .map_err(|e| {
-            let msg = format!("HTTP request failed: {}", e);
+            let msg = format!("HTTP 请求失败: {}", e);
             log::error!("{msg}");
             msg
         })?;
@@ -62,7 +62,7 @@ pub async fn get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        let msg = format!("DeepSeek API returned HTTP {}: {}", status, body);
+        let msg = format!("DeepSeek API 返回 HTTP {}: {}", status, body);
         log::error!("{msg}");
         return Err(msg);
     }
@@ -71,7 +71,7 @@ pub async fn get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
         .json()
         .await
         .map_err(|e| {
-            let msg = format!("Failed to parse DeepSeek response: {}", e);
+            let msg = format!("解析 DeepSeek 响应失败: {}", e);
             log::error!("{msg}");
             msg
         })?;

@@ -102,18 +102,18 @@ function TitleBar({
       <div className="title-actions">
         <button
           className={`icon-btn${isRefreshing ? " is-spinning" : ""}`}
-          title="Refresh"
+          title="刷新"
           onClick={onRefresh}
           disabled={isRefreshing}
         >
           {"\u21BB"}
         </button>
-        <button className="icon-btn" title="Settings" onClick={onSettings}>
+        <button className="icon-btn" title="设置" onClick={onSettings}>
           {"\u2699"}
         </button>
         <button
           className="icon-btn icon-btn--close"
-          title="Hide to tray"
+          title="隐藏到托盘"
           onClick={onHide}
         >
           {"\u2715"}
@@ -327,12 +327,12 @@ function App() {
 
           {loading ? (
             <div className="loading-state">
-              <span className="loading-text">Loading\u2026</span>
+               <span className="loading-text">加载中\u2026</span>
             </div>
           ) : (
             <>
               <section className="section">
-                <span className="section-label">Volcano Engine</span>
+                 <span className="section-label">火山引擎</span>
                 <div className="usage-grid">
                   {periods.length > 0 ? (
                     periods.map((p) => (
@@ -340,7 +340,7 @@ function App() {
                     ))
                   ) : (
                     <div className="balance-value is-unavailable">
-                      unavailable
+                       不可用
                     </div>
                   )}
                 </div>
@@ -350,7 +350,7 @@ function App() {
                 <section className="section">
                   <span className="section-label">DeepSeek</span>
                   <div className="balance-row">
-                    <span className="balance-label">Balance</span>
+                    <span className="balance-label">余额</span>
                     <span
                       className={`balance-value${
                         balanceAvailable ? "" : " is-unavailable"
@@ -358,14 +358,14 @@ function App() {
                     >
                       {balanceAvailable && balanceInfo
                         ? `${currencySymbol(balanceInfo.currency)}${balanceInfo.total_balance}`
-                        : "unavailable"}
+                        : "不可用"}
                     </span>
                   </div>
                 </section>
               )}
 
               <div className="update-footer">
-                updated {formatBeijingTime(volcanoUsage?.updated_at)}
+                更新于 {formatBeijingTime(volcanoUsage?.updated_at)}
               </div>
             </>
           )}
