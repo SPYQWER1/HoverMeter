@@ -146,20 +146,7 @@ fn try_query_volcano_usage() -> Result<VolcanoUsage, String> {
 
 /// Return a user-facing error string for a failed `arkcli` invocation.
 fn friendly_arkcli_error(status: std::process::ExitStatus, stderr: &str) -> String {
-    if stderr_looks_like_auth_error(stderr) {
-        "arkcli 登录已过期，请在终端运行 `arkcli auth login volc-sso` 重新登录。".to_string()
-    } else {
-        format!("arkcli 退出，状态码 {}: {}", status, stderr.trim())
-    }
-}
-
-fn stderr_looks_like_auth_error(stderr: &str) -> bool {
-    let lower = stderr.to_lowercase();
-    lower.contains("requires volc sso sts")
-        || lower.contains("auth login volc-sso")
-        || lower.contains("续期失败")
-        || lower.contains("token 交换失败")
-        || lower.contains("refresh token is invalid")
+    format!("arkcli 退出，状态码 {}: {}", status, stderr.trim())
 }
 
 #[cfg(target_os = "windows")]
