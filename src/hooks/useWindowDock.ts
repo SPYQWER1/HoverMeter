@@ -32,7 +32,7 @@ export function useWindowDock(hovered: boolean) {
   const savedPosRef = useRef<{ x: number; y: number } | null>(null);
   const winSizeRef = useRef<{ width: number; height: number }>({
     width: 290,
-    height: 156,
+    height: 142,
   });
   const winRef = useRef(getCurrentWebviewWindow());
   const hoveredRef = useRef(hovered);

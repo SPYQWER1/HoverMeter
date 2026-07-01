@@ -14,6 +14,8 @@ pub struct Settings {
     pub refresh_interval: i32,
     #[serde(default = "default_opacity")]
     pub opacity: f64,
+    #[serde(default)]
+    pub autostart: bool,
 }
 
 fn default_refresh_interval() -> i32 {
@@ -30,6 +32,7 @@ impl Default for Settings {
             deepseek_api_key: String::new(),
             refresh_interval: default_refresh_interval(),
             opacity: default_opacity(),
+            autostart: false,
         }
     }
 }
@@ -59,10 +62,11 @@ fn save_setts(
     deepseek_api_key: &str,
     refresh_interval: i32,
     opacity: f64,
+    autostart: bool,
     app_handle: &AppHandle,
 ) -> Result<(), String> {
     log::info!(
-        "Saving settings: refresh_interval={refresh_interval}, opacity={opacity}, key_len={}",
+        "Saving settings: refresh_interval={refresh_interval}, opacity={opacity}, autostart={autostart}, key_len={}",
         deepseek_api_key.len()
     );
     let path = settings_path(app_handle)?;
@@ -70,6 +74,7 @@ fn save_setts(
         deepseek_api_key: deepseek_api_key.to_string(),
         refresh_interval,
         opacity,
+        autostart,
     };
     let json = serde_json::to_string_pretty(&settings)
         .map_err(|e| {
@@ -125,10 +130,11 @@ pub fn save_settings(
     deepseek_api_key: String,
     refresh_interval: i32,
     opacity: f64,
+    autostart: bool,
     app_handle: AppHandle,
 ) -> Result<(), String> {
     log::info!("save_settings command invoked");
-    save_setts(&deepseek_api_key, refresh_interval, opacity, &app_handle)
+    save_setts(&deepseek_api_key, refresh_interval, opacity, autostart, &app_handle)
 }
 
 #[tauri::command]

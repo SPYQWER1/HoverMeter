@@ -19,6 +19,7 @@ interface StoredSettings {
   deepseek_api_key: string;
   refresh_interval: number;
   opacity: number;
+  autostart: boolean;
 }
 
 const DEFAULT_OPACITY = 0.85;
@@ -148,6 +149,7 @@ function App() {
   const [initialSettings, setInitialSettings] = useState<
     AppSettings | undefined
   >(undefined);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const {
     volcanoUsage,
@@ -220,7 +222,7 @@ function App() {
         clearTimeout(pendingWindowStateSave.current);
       }
       pendingWindowStateSave.current = setTimeout(() => {
-        saveWindowState(StateFlags.ALL).catch((err: unknown) =>
+        saveWindowState(StateFlags.POSITION).catch((err: unknown) =>
           console.error("failed to save window state:", err),
         );
       }, 300);
@@ -248,14 +250,29 @@ function App() {
   }, [opacity]);
 
   useEffect(() => {
-    if (!showSettings) return;
+    if (!showSettings) {
+      setSaveError(null);
+      return;
+    }
     invoke<StoredSettings>("load_settings")
-      .then((settings) => {
+      .then(async (settings) => {
         setInitialSettings({
           deepseek_api_key: settings.deepseek_api_key,
           refresh_interval: settings.refresh_interval,
           opacity: settings.opacity,
+          autostart: settings.autostart,
         });
+
+        try {
+          const osAutostart = await invoke<boolean>("get_autostart");
+          if (osAutostart !== settings.autostart) {
+            console.warn(
+              `Autostart mismatch: JSON=${settings.autostart}, OS=${osAutostart}`,
+            );
+          }
+        } catch {
+          console.warn("Could not verify autostart state with OS");
+        }
       })
       .catch((err: unknown) =>
         console.error("failed to load settings for panel:", err),
@@ -277,18 +294,24 @@ function App() {
 
   const handleSaveSettings = async (settings: AppSettings) => {
     try {
+      setSaveError(null);
       await invoke("save_settings", {
         deepseekApiKey: settings.deepseek_api_key,
         refreshInterval: settings.refresh_interval,
         opacity: settings.opacity,
+        autostart: settings.autostart,
       });
+      await invoke("set_autostart", { enable: settings.autostart });
       setDeepseekApiKey(settings.deepseek_api_key);
       setOpacity(settings.opacity);
       setRefreshInterval(settings.refresh_interval);
       setShowSettings(false);
       refresh();
     } catch (err: unknown) {
-      console.error("failed to save settings:", err);
+      const msg =
+        err instanceof Error ? err.message : String(err);
+      console.error("failed to save settings:", msg);
+      setSaveError(`保存失败: ${msg}`);
     }
   };
 
@@ -379,6 +402,7 @@ function App() {
         onSave={handleSaveSettings}
         onOpacityChange={handleOpacityChange}
         initialSettings={initialSettings}
+        saveError={saveError}
       />
     </>
   );

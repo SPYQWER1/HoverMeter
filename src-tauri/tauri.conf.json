@@ -14,7 +14,7 @@
       {
         "title": "HoverMeter",
         "width": 290,
-        "height": 156,
+        "height": 142,
         "alwaysOnTop": true,
         "transparent": true,
         "decorations": false,

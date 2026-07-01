@@ -37,5 +37,6 @@ export interface AppSettings {
   deepseek_api_key: string;
   refresh_interval: number;
   opacity: number;
+  autostart: boolean;
 }
 

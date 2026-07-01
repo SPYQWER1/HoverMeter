@@ -11,6 +11,7 @@ use tauri::{
 };
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use tauri_plugin_opener::OpenerExt;
+use tauri_plugin_autostart::ManagerExt;
 
 /// Simple guard to ignore rapid consecutive tray toggles, which can deadlock
 /// WebView2 on Windows when combined with transparent always-on-top windows.
@@ -28,6 +29,50 @@ impl TrayToggleGuard {
     fn release(&self) {
         self.0.store(false, Ordering::SeqCst);
     }
+}
+
+/// Enable or disable auto-launch on system startup.
+#[tauri::command]
+fn set_autostart(app: tauri::AppHandle, enable: bool) -> Result<(), String> {
+    log::info!("Attempting to set autostart to {enable}");
+    let manager = app.autolaunch();
+    if enable {
+        manager.enable().map_err(|e| {
+            let msg = format!("启用开机自启失败: {e}");
+            log::error!("{msg}");
+            msg
+        })?;
+    } else {
+        manager.disable().map_err(|e| {
+            let msg = format!("禁用开机自启失败: {e}");
+            log::error!("{msg}");
+            msg
+        })?;
+    }
+
+    match manager.is_enabled() {
+        Ok(state) => {
+            log::info!("Autostart set to {enable}, verified OS state: {state}");
+            if state != enable {
+                log::warn!(
+                    "Autostart state mismatch: requested {enable} but OS reports {state}"
+                );
+            }
+        }
+        Err(e) => {
+            log::warn!("Autostart operation completed but could not verify state: {e}");
+        }
+    }
+
+    Ok(())
+}
+
+/// Check whether auto-launch on system startup is enabled.
+#[tauri::command]
+fn get_autostart(app: tauri::AppHandle) -> Result<bool, String> {
+    app.autolaunch()
+        .is_enabled()
+        .map_err(|e| format!("查询开机自启状态失败: {e}"))
 }
 
 /// Open the directory containing the application log files.
@@ -80,7 +125,11 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(tauri_plugin_window_state::StateFlags::POSITION)
+                .build(),
+        )
         .plugin(tauri_plugin_positioner::init())
         .manage(TrayToggleGuard::new())
         .on_window_event(|window, event| {
@@ -162,10 +211,25 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+
+            match app.autolaunch().is_enabled() {
+                Ok(enabled) => {
+                    log::info!(
+                        "Autostart is currently {}enabled",
+                        if enabled { "" } else { "not " }
+                    );
+                }
+                Err(e) => {
+                    log::warn!("Could not check autostart state at startup: {e}");
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             open_log_dir,
+            set_autostart,
+            get_autostart,
             deepseek::get_deepseek_balance,
             volcano::get_volcano_usage,
             storage::save_settings,

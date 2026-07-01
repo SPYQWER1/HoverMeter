@@ -218,17 +218,17 @@ body {
 .widget-body {
   flex: 1;
   overflow: hidden;
-  padding: 5px 10px 3px;
+  padding: 2px 10px 2px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 1px;
 }
 
 /* ── Sections ── */
 .section {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 /* Volcano section expands when DeepSeek is hidden */
@@ -265,7 +265,7 @@ body {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-cell);
-  padding: 3px 2px;
+  padding: 2px 2px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -308,7 +308,7 @@ body {
   background: var(--accent-deepseek-soft);
   border: 1px solid var(--accent-deepseek-border);
   border-radius: var(--radius-cell);
-  padding: 4px 7px;
+  padding: 3px 7px;
 }
 
 .balance-label {

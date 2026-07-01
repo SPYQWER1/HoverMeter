@@ -9,6 +9,7 @@ interface SettingsProps {
   onSave: (settings: AppSettings) => void;
   onOpacityChange?: (opacity: number) => void;
   initialSettings?: AppSettings;
+  saveError?: string | null;
 }
 
 const DEFAULT_REFRESH_INTERVAL = 5;
@@ -20,18 +21,21 @@ function Settings({
   onSave,
   onOpacityChange,
   initialSettings,
+  saveError,
 }: SettingsProps) {
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
   const [refreshInterval, setRefreshInterval] = useState<number>(
     DEFAULT_REFRESH_INTERVAL,
   );
   const [opacity, setOpacity] = useState<number>(DEFAULT_OPACITY);
+  const [autostart, setAutostart] = useState<boolean>(false);
 
   useEffect(() => {
     if (!isOpen || !initialSettings) return;
     setDeepseekApiKey(initialSettings.deepseek_api_key);
     setRefreshInterval(initialSettings.refresh_interval);
     setOpacity(initialSettings.opacity);
+    setAutostart(initialSettings.autostart);
   }, [isOpen, initialSettings]);
 
   if (!isOpen) {
@@ -55,6 +59,7 @@ function Settings({
       deepseek_api_key: deepseekApiKey,
       refresh_interval: refreshInterval,
       opacity,
+      autostart,
     });
   };
 
@@ -76,12 +81,15 @@ function Settings({
     >
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
         <form className="settings-form" onSubmit={handleSubmit}>
+          {saveError && (
+            <div className="settings-error">{saveError}</div>
+          )}
           <section className="settings-section">
-            <label className="settings-field">
+            <label className="settings-row">
               <span className="settings-label">DeepSeek API Key</span>
               <input
                 type="password"
-                className="settings-input"
+                className="settings-input settings-input-key"
                 value={deepseekApiKey}
                 onChange={(e) => setDeepseekApiKey(e.target.value)}
                 placeholder="sk-..."
@@ -121,6 +129,18 @@ function Settings({
                 />
                 <span className="settings-value">{opacity.toFixed(2)}</span>
               </div>
+            </label>
+
+            <label className="settings-row">
+              <span className="settings-label">开机自启</span>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={autostart}
+                  onChange={(e) => setAutostart(e.target.checked)}
+                />
+                <span className="settings-toggle-track" />
+              </label>
             </label>
           </section>
 
