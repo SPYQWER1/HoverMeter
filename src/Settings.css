@@ -62,12 +62,6 @@
   border-bottom: none;
 }
 
-.settings-field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 .settings-row {
   display: flex;
   align-items: center;

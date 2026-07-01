@@ -1,19 +1,28 @@
+//! 应用设置持久化模块
+//!
+//! 使用 JSON 文件存储用户设置（API Key、刷新间隔、不透明度、开机自启）。
+//! 文件位于 Tauri 应用数据目录下的 `settings.json`。
+
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri::Manager;
 
-// ─── Data Structures ─────────────────────────────
+// ─── 数据结构 ────────────────────────────────────
 
-/// Application settings persisted as JSON in app data dir
+/// 应用设置，以 JSON 格式持久化在应用数据目录中
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
+    /// DeepSeek API 密钥
     #[serde(default)]
     pub deepseek_api_key: String,
+    /// 数据刷新间隔（分钟）
     #[serde(default = "default_refresh_interval")]
     pub refresh_interval: i32,
+    /// 窗口不透明度（0.0–1.0）
     #[serde(default = "default_opacity")]
     pub opacity: f64,
+    /// 是否启用开机自启
     #[serde(default)]
     pub autostart: bool,
 }
@@ -37,8 +46,11 @@ impl Default for Settings {
     }
 }
 
-// ─── Settings Path ───────────────────────────────
+// ─── 设置文件路径 ────────────────────────────────
 
+/// 获取 `settings.json` 的完整路径。
+///
+/// 如果应用数据目录不存在则自动创建。
 fn settings_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
     let data_dir = app_handle
         .path()
@@ -57,8 +69,8 @@ fn settings_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
     Ok(data_dir.join("settings.json"))
 }
 
-/// Persist settings to a JSON file in the Tauri app data directory.
-fn save_setts(
+/// 将设置序列化为 JSON 并写入 `settings.json`。
+fn save_settings_inner(
     deepseek_api_key: &str,
     refresh_interval: i32,
     opacity: f64,
@@ -89,9 +101,10 @@ fn save_setts(
     })
 }
 
-/// Load settings from the JSON file in the Tauri app data directory.
-/// Returns default values if the file does not exist or cannot be parsed.
-fn load_setts(app_handle: &AppHandle) -> Settings {
+/// 从 `settings.json` 加载设置。
+///
+/// 文件不存在或解析失败时返回默认值。
+fn load_settings_inner(app_handle: &AppHandle) -> Settings {
     log::info!("Loading settings");
     let path = match settings_path(app_handle) {
         Ok(p) => p,
@@ -123,8 +136,9 @@ fn load_setts(app_handle: &AppHandle) -> Settings {
     }
 }
 
-// ─── Tauri Commands ──────────────────────────────
+// ─── Tauri 命令 ──────────────────────────────────
 
+/// 保存应用设置到 JSON 文件。
 #[tauri::command]
 pub fn save_settings(
     deepseek_api_key: String,
@@ -134,11 +148,12 @@ pub fn save_settings(
     app_handle: AppHandle,
 ) -> Result<(), String> {
     log::info!("save_settings command invoked");
-    save_setts(&deepseek_api_key, refresh_interval, opacity, autostart, &app_handle)
+    save_settings_inner(&deepseek_api_key, refresh_interval, opacity, autostart, &app_handle)
 }
 
+/// 从 JSON 文件加载应用设置。
 #[tauri::command]
 pub fn load_settings(app_handle: AppHandle) -> Settings {
     log::info!("load_settings command invoked");
-    load_setts(&app_handle)
+    load_settings_inner(&app_handle)
 }

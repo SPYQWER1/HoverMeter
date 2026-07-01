@@ -1,3 +1,7 @@
+//! HoverMeter 应用入口模块
+//!
+//! 负责 Tauri 应用初始化：插件注册、系统托盘、窗口事件处理、命令注册。
+
 mod deepseek;
 mod storage;
 mod volcano;
@@ -13,8 +17,10 @@ use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_autostart::ManagerExt;
 
-/// Simple guard to ignore rapid consecutive tray toggles, which can deadlock
-/// WebView2 on Windows when combined with transparent always-on-top windows.
+/// 托盘切换守卫：防止 Windows 上快速连续点击托盘图标导致 WebView2 死锁。
+///
+/// 透明 always-on-top 窗口在快速 show/hide 切换时可能使 WebView2 无响应，
+/// 此原子锁确保同一时间只有一个切换操作在进行。
 struct TrayToggleGuard(AtomicBool);
 
 impl TrayToggleGuard {
@@ -22,16 +28,21 @@ impl TrayToggleGuard {
         Self(AtomicBool::new(false))
     }
 
+    /// 尝试获取守卫锁。返回 true 表示获取成功，可以执行切换操作。
     fn try_acquire(&self) -> bool {
         !self.0.swap(true, Ordering::SeqCst)
     }
 
+    /// 释放守卫锁。
     fn release(&self) {
         self.0.store(false, Ordering::SeqCst);
     }
 }
 
-/// Enable or disable auto-launch on system startup.
+/// 启用或禁用系统开机自启动。
+///
+/// 通过 Tauri autostart 插件操作 OS 注册表/LaunchAgent。
+/// 操作完成后验证实际状态是否与请求一致。
 #[tauri::command]
 fn set_autostart(app: tauri::AppHandle, enable: bool) -> Result<(), String> {
     log::info!("Attempting to set autostart to {enable}");
@@ -67,7 +78,7 @@ fn set_autostart(app: tauri::AppHandle, enable: bool) -> Result<(), String> {
     Ok(())
 }
 
-/// Check whether auto-launch on system startup is enabled.
+/// 查询系统开机自启动状态。
 #[tauri::command]
 fn get_autostart(app: tauri::AppHandle) -> Result<bool, String> {
     app.autolaunch()
@@ -75,7 +86,7 @@ fn get_autostart(app: tauri::AppHandle) -> Result<bool, String> {
         .map_err(|e| format!("查询开机自启状态失败: {e}"))
 }
 
-/// Open the directory containing the application log files.
+/// 通过系统文件管理器打开应用日志目录。
 #[tauri::command]
 fn open_log_dir(app: tauri::AppHandle) -> Result<(), String> {
     let log_dir = app
@@ -92,6 +103,12 @@ fn open_log_dir(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Tauri 应用入口。
+///
+/// 配置日志（单文件轮转、100KB 上限、Info 级别）、
+/// 注册所有插件（opener/autostart/window-state/positioner/single-instance）、
+/// 设置系统托盘（左键切换显示、右键菜单）、
+/// 拦截窗口关闭事件（隐藏到托盘而非退出）。
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
@@ -133,8 +150,8 @@ pub fn run() {
         .plugin(tauri_plugin_positioner::init())
         .manage(TrayToggleGuard::new())
         .on_window_event(|window, event| {
-            // Close hides to tray instead of quitting. Let the frontend handle the
-            // actual hide so it can wait for any window animations to finish first.
+            // 关闭窗口时拦截默认行为，发送 hide-requested 事件给前端，
+            // 让前端等待停靠动画完成后再隐藏窗口。
             if let WindowEvent::CloseRequested { api, .. } = event {
                 log::info!("Close requested; hiding to tray instead of quitting");
                 api.prevent_close();
@@ -144,7 +161,7 @@ pub fn run() {
         .setup(|app| {
             log::info!("HoverMeter starting up");
 
-            // Build tray menu: 显示面板 / 设置 / 打开日志 / --- / 退出
+            // 构建托盘右键菜单：显示面板 / 设置 / 打开日志 / --- / 退出
             let show_widget = MenuItem::with_id(app, "show", "显示面板", true, None::<&str>)?;
             let settings = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
             let logs = MenuItem::with_id(app, "logs", "打开日志", true, None::<&str>)?;
@@ -188,7 +205,7 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    // Left-click toggles main window visibility.
+                    // 左键点击托盘图标：切换主窗口显示/隐藏
                     if let TrayIconEvent::Click {
                         button: MouseButton::Left,
                         button_state: MouseButtonState::Up,

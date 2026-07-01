@@ -1,49 +1,53 @@
+//! DeepSeek API 余额查询模块
+//!
+//! 通过 HTTP GET 请求 `https://api.deepseek.com/user/balance`，
+//! 使用 Bearer Token 认证，解析返回的账户余额信息。
+
 use serde::{Deserialize, Serialize};
 
-/// Top-level response from GET https://api.deepseek.com/user/balance
+/// DeepSeek 余额查询的顶层响应
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeepSeekBalance {
-    /// Whether the account is available
+    /// 账户是否可用
     #[serde(rename = "is_available")]
     pub is_available: bool,
-    /// List of balance information per currency
+    /// 各币种余额列表
     #[serde(rename = "balance_infos")]
     pub balance_infos: Vec<BalanceInfo>,
 }
 
-/// Balance information for a specific currency
+/// 单个币种的余额信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BalanceInfo {
-    /// Currency code, e.g. "CNY"
+    /// 货币代码，如 "CNY"
     pub currency: String,
-    /// Total balance as a string to preserve precision
+    /// 总余额（字符串形式以保持精度）
     #[serde(rename = "total_balance")]
     pub total_balance: String,
-    /// Granted (free) balance
+    /// 赠送余额
     #[serde(rename = "granted_balance")]
     pub granted_balance: String,
-    /// Topped-up (purchased) balance
+    /// 充值余额
     #[serde(rename = "topped_up_balance")]
     pub topped_up_balance: String,
 }
 
+/// 最大重试次数
 const MAX_RETRIES: u32 = 3;
+/// 重试间隔（毫秒）
 const RETRY_DELAY_MS: u64 = 800;
 
-/// Query the DeepSeek balance API with retry logic.
+/// 查询 DeepSeek 余额（带重试逻辑）。
 ///
-/// Sends a GET request to `https://api.deepseek.com/user/balance` with
-/// `Authorization: Bearer {api_key}` and returns the parsed response.
+/// 对网络临时错误最多重试 MAX_RETRIES 次。
+/// 对永久性错误（空 API Key、HTTP 401/403）不重试。
 ///
-/// Retries transient failures up to `MAX_RETRIES` times with a delay.
-/// Does not retry permanent errors (empty API key, HTTP 401/403).
+/// # 错误
 ///
-/// # Errors
-///
-/// Returns `Err` if:
-/// - The API key is empty
-/// - The HTTP request fails after all retries (network error, non-200 status)
-/// - The response body cannot be parsed as JSON
+/// 返回 `Err` 的情况：
+/// - API Key 为空
+/// - HTTP 请求失败（重试耗尽后）
+/// - 响应体无法解析为 JSON
 pub async fn get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
     let mut last_error: Option<String> = None;
 
@@ -75,12 +79,14 @@ pub async fn get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
     Err(err)
 }
 
+/// 判断错误是否为永久性错误（不应重试）。
 fn is_permanent_error(error: &str) -> bool {
     error.contains("API 密钥不能为空")
         || error.contains("HTTP 401")
         || error.contains("HTTP 403")
 }
 
+/// 单次尝试：发送 HTTP 请求、检查状态码、解析 JSON 响应。
 async fn try_get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
     if api_key.is_empty() {
         log::warn!("DeepSeek API key is empty");
@@ -122,7 +128,7 @@ async fn try_get_balance(api_key: &str) -> Result<DeepSeekBalance, String> {
     Ok(balance)
 }
 
-/// Tauri command: query DeepSeek balance.
+/// Tauri 命令：查询 DeepSeek 余额。
 #[tauri::command]
 pub async fn get_deepseek_balance(api_key: String) -> Result<DeepSeekBalance, String> {
     log::info!("get_deepseek_balance command invoked");

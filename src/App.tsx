@@ -1,144 +1,33 @@
+/**
+ * App 组件 — HoverMeter 主界面
+ *
+ * 负责窗口生命周期、设置管理、数据展示协调。
+ * 组合 TitleBar、UsageCell、Settings 等子组件。
+ */
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { saveWindowState, StateFlags } from "@tauri-apps/plugin-window-state";
 import type {
-  PeriodUsage,
   BalanceInfo,
   AppSettings,
 } from "./types";
+import { DEFAULT_OPACITY, DEFAULT_REFRESH_INTERVAL } from "./types";
 import { useUsageData } from "./hooks/useUsageData";
 import { useWindowDock } from "./hooks/useWindowDock";
+import { TitleBar } from "./components/TitleBar";
+import { UsageCell } from "./components/UsageCell";
+import { currencySymbol, formatBeijingTime } from "./utils/format";
 import Settings from "./Settings";
 
-// ─── Types ───────────────────────────────────────
-
-/** Shape returned by the `load_settings` Tauri command (storage.rs `Settings`). */
-interface StoredSettings {
-  deepseek_api_key: string;
-  refresh_interval: number;
-  opacity: number;
-  autostart: boolean;
-}
-
-const DEFAULT_OPACITY = 0.85;
-const DEFAULT_REFRESH_INTERVAL = 5;
-
-// ─── Helpers ─────────────────────────────────────
-
-type PercentStatus = "ok" | "warn" | "danger";
-
-function percentStatus(percent: number): PercentStatus {
-  if (percent >= 80) return "danger";
-  if (percent >= 50) return "warn";
-  return "ok";
-}
-
-function formatPercent(percent: number): string {
-  return `${percent.toFixed(1)}%`;
-}
-
-function formatReset(resetAt: number): string {
-  const diff = resetAt - Date.now();
-  if (diff <= 0) return "now";
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m`;
-  const hours = Math.floor(mins / 60);
-  const remMin = mins % 60;
-  if (hours < 24) return `${hours}h ${remMin}m`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
-}
-
-function formatBeijingTime(ts: number | undefined): string {
-  if (!ts) return "\u2014";
-  return new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(ts));
-}
-
-function currencySymbol(currency: string): string {
-  switch (currency.toUpperCase()) {
-    case "CNY":
-    case "RMB":
-      return "\u00A5";
-    case "USD":
-      return "$";
-    case "EUR":
-      return "\u20AC";
-    case "GBP":
-      return "\u00A3";
-    default:
-      return `${currency} `;
-  }
-}
-
-// ─── TitleBar ────────────────────────────────────
-
-interface TitleBarProps {
-  title: string;
-  isRefreshing: boolean;
-  onSettings: () => void;
-  onRefresh: () => void;
-  onHide: () => void;
-}
-
-function TitleBar({
-  title,
-  isRefreshing,
-  onSettings,
-  onRefresh,
-  onHide,
-}: TitleBarProps) {
-  return (
-    <div className="title-bar" data-tauri-drag-region>
-      <div className="title-brand">
-        <span className="title-dot" />
-        <span>{title}</span>
-      </div>
-      <div className="title-actions">
-        <button
-          className={`icon-btn${isRefreshing ? " is-spinning" : ""}`}
-          title="刷新"
-          onClick={onRefresh}
-          disabled={isRefreshing}
-        >
-          {"\u21BB"}
-        </button>
-        <button className="icon-btn" title="设置" onClick={onSettings}>
-          {"\u2699"}
-        </button>
-        <button
-          className="icon-btn icon-btn--close"
-          title="隐藏到托盘"
-          onClick={onHide}
-        >
-          {"\u2715"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── UsageCell ───────────────────────────────────
-
-function UsageCell({ period }: { period: PeriodUsage }) {
-  const status = percentStatus(period.percent);
-  return (
-    <div className={`usage-cell is-${status}`}>
-      <span className="usage-label">{period.label}</span>
-      <span className="usage-value">{formatPercent(period.percent)}</span>
-      <span className="usage-reset">{`in ${formatReset(period.reset_at)}`}</span>
-    </div>
-  );
-}
-
-// ─── App ─────────────────────────────────────────
-
+/**
+ * 应用主组件。
+ *
+ * 挂载后加载持久化设置、显示窗口、注册事件监听。
+ * 协调火山引擎用量数据和 DeepSeek 余额数据的展示。
+ */
 function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [opacity, setOpacity] = useState<number>(DEFAULT_OPACITY);
@@ -163,9 +52,8 @@ function App() {
   const pendingWindowStateSave = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [widgetHovered, setWidgetHovered] = useState(false);
-  // Keep the docked widget revealed while the settings panel is open,
-  // otherwise moving the cursor onto the settings overlay would make the
-  // widget think the mouse left and slide back/hide.
+  // 设置面板打开时保持窗口完全显示，
+  // 防止鼠标移动到设置面板上时触发窗口隐藏动画。
   const effectiveHovered = widgetHovered || showSettings;
   const { dockState, forceHideToDock } = useWindowDock(effectiveHovered);
 
@@ -173,8 +61,13 @@ function App() {
   dockStateRef.current = dockState.edge;
   const hidingRef = useRef(false);
 
-  // Reveal the window after mount to avoid the initial white flash.
-  // The window is created with visible:false in tauri.conf.json.
+  /**
+   * 初始化副作用：
+   * 1. 显示窗口（tauri.conf.json 中 visible:false，避免白色闪烁）
+   * 2. 加载持久化设置
+   * 3. 注册 show-settings / hide-requested 事件监听
+   * 4. 注册窗口移动/缩放事件，延迟保存窗口位置
+   */
   useEffect(() => {
     const win = getCurrentWebviewWindow();
     win
@@ -183,7 +76,7 @@ function App() {
         console.error("failed to show window:", err),
       );
 
-    invoke<StoredSettings>("load_settings")
+    invoke<AppSettings>("load_settings")
       .then((settings) => {
         if (settings.deepseek_api_key) {
           setDeepseekApiKey(settings.deepseek_api_key);
@@ -216,6 +109,10 @@ function App() {
       handleHide();
     });
 
+    /**
+     * 延迟保存窗口位置（300ms 防抖）。
+     * 窗口停靠时不保存，避免保存被隐藏的位置。
+     */
     const scheduleSaveState = () => {
       if (dockStateRef.current) return;
       if (pendingWindowStateSave.current) {
@@ -242,6 +139,7 @@ function App() {
     };
   }, []);
 
+  /** 将不透明度值同步到 CSS 自定义属性 `--widget-opacity` */
   useEffect(() => {
     document.documentElement.style.setProperty(
       "--widget-opacity",
@@ -249,12 +147,16 @@ function App() {
     );
   }, [opacity]);
 
+  /**
+   * 设置面板打开时重新加载设置（确保显示最新值），
+   * 同时验证自启动状态与 OS 注册表是否一致。
+   */
   useEffect(() => {
     if (!showSettings) {
       setSaveError(null);
       return;
     }
-    invoke<StoredSettings>("load_settings")
+    invoke<AppSettings>("load_settings")
       .then(async (settings) => {
         setInitialSettings({
           deepseek_api_key: settings.deepseek_api_key,
@@ -279,6 +181,10 @@ function App() {
       );
   }, [showSettings]);
 
+  /**
+   * 隐藏窗口到系统托盘。
+   * 等待停靠动画完成后隐藏，防止 WebView2 无响应。
+   */
   const handleHide = useCallback(async () => {
     if (hidingRef.current) return;
     hidingRef.current = true;
@@ -292,6 +198,13 @@ function App() {
     }
   }, [forceHideToDock]);
 
+  /**
+   * 保存设置到 Rust 后端：
+   * 1. 持久化到 JSON 文件
+   * 2. 更新 OS 自启动注册表
+   * 3. 同步到组件状态
+   * 4. 触发数据刷新
+   */
   const handleSaveSettings = async (settings: AppSettings) => {
     try {
       setSaveError(null);
@@ -315,6 +228,7 @@ function App() {
     }
   };
 
+  /** 实时更新不透明度（拖动滑块时即时生效） */
   const handleOpacityChange = (value: number) => {
     setOpacity(value);
   };
@@ -350,7 +264,7 @@ function App() {
 
           {loading ? (
             <div className="loading-state">
-               <span className="loading-text">加载中\u2026</span>
+               <span className="loading-text">加载中{"\u2026"}</span>
             </div>
           ) : (
             <>

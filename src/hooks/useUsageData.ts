@@ -1,28 +1,36 @@
+/**
+ * useUsageData Hook — 数据获取与自动刷新
+ *
+ * 在组件挂载时获取火山引擎用量和 DeepSeek 余额，
+ * 并按照配置的刷新间隔自动轮询。
+ */
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { VolcanoUsage, DeepSeekBalance } from "../types";
 
 interface UseUsageDataReturn {
-  /** Volcano Engine usage data, or null when not yet fetched / unavailable. */
+  /** 火山引擎用量数据，未获取时为 null */
   volcanoUsage: VolcanoUsage | null;
-  /** DeepSeek balance data, or null when not yet fetched / unavailable. */
+  /** DeepSeek 余额数据，未获取或未配置 API Key 时为 null */
   deepseekBalance: DeepSeekBalance | null;
-  /** True during the initial fetch (no data shown yet). */
+  /** 首次加载中（无数据显示） */
   loading: boolean;
-  /** True when a background refresh is in progress (data is stale but shown). */
+  /** 后台刷新中（旧数据仍显示） */
   refreshing: boolean;
-  /** Error message from the most recent fetch, or null. */
+  /** 最近一次获取的错误信息，无错误时为 null */
   error: string | null;
-  /** Manually trigger a data refresh. */
+  /** 手动触发数据刷新 */
   refresh: () => void;
 }
 
 /**
- * Fetches Volcano Engine usage and DeepSeek balance on mount and
- * auto-refreshes on a configurable interval.
+ * 管理火山引擎用量和 DeepSeek 余额的自动获取。
  *
- * Volcano usage is always fetched (arkcli handles auth independently).
- * DeepSeek balance is only fetched when `deepseekApiKey` is non-empty.
+ * - 火山引擎用量始终获取（arkcli 独立认证）
+ * - DeepSeek 余额仅在配置了 API Key 时获取
+ * - 刷新间隔最小 30 秒，防止频繁请求
+ * - 处理竞态条件：API Key 从空变为非空时自动重新获取
  */
 export function useUsageData(
   refreshIntervalMinutes: number = 5,
@@ -40,6 +48,12 @@ export function useUsageData(
   const fetchInProgress = useRef(false);
   const pendingRefetch = useRef(false);
 
+  /**
+   * 核心数据获取函数。
+   *
+   * 并行请求火山引擎和 DeepSeek（如果配置了 API Key）。
+   * 使用 fetchInProgress 锁防止并发请求。
+   */
   const fetchData = useCallback(async (isInitial: boolean) => {
     if (fetchInProgress.current) return;
     fetchInProgress.current = true;
@@ -89,10 +103,15 @@ export function useUsageData(
     }
   }, []);
 
+  /** 挂载时首次获取数据 */
   useEffect(() => {
     fetchData(true);
   }, [fetchData]);
 
+  /**
+   * 当 API Key 从空变为非空时重新获取 DeepSeek 余额。
+   * 如果正在获取中则标记待重取，当前请求结束后自动触发。
+   */
   const prevKeyRef = useRef(deepseekApiKey);
   useEffect(() => {
     if (!prevKeyRef.current && deepseekApiKey) {
@@ -105,6 +124,7 @@ export function useUsageData(
     prevKeyRef.current = deepseekApiKey;
   }, [deepseekApiKey, fetchData]);
 
+  /** 定时轮询（最小间隔 30 秒） */
   useEffect(() => {
     const ms = Math.max(30_000, refreshIntervalMinutes * 60_000);
     const id = setInterval(() => {
@@ -113,6 +133,7 @@ export function useUsageData(
     return () => clearInterval(id);
   }, [refreshIntervalMinutes, fetchData]);
 
+  /** 手动刷新（暴露给组件） */
   const refresh = useCallback(() => {
     fetchData(false);
   }, [fetchData]);

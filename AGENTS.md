@@ -7,11 +7,15 @@ Tauri v2 desktop widget showing Volcano Engine Coding Plan usage + DeepSeek API 
 ```
 Frontend (React 19 / TS 5.8 / Vite 7)     Backend (Rust / Tauri v2)
 ─────────────────────────────────────     ──────────────────────────
-src/App.tsx          main widget UI       src-tauri/src/lib.rs     app setup, tray, commands
-src/Settings.tsx     settings panel       src-tauri/src/volcano.rs  arkcli subprocess wrapper
-src/hooks/useUsageData.ts  data fetch     src-tauri/src/deepseek.rs DeepSeek HTTP API
-src/types/index.ts   shared TS types      src-tauri/src/storage.rs  keyring + JSON settings
-src/utils/log.ts     frontend logging     src-tauri/src/main.rs     entry point
+src/App.tsx              main widget      src-tauri/src/lib.rs     app setup, tray, commands
+src/Settings.tsx         settings panel   src-tauri/src/volcano.rs  arkcli subprocess wrapper
+src/components/TitleBar.tsx   title bar   src-tauri/src/deepseek.rs DeepSeek HTTP API
+src/components/UsageCell.tsx  usage cell  src-tauri/src/storage.rs  JSON settings persistence
+src/hooks/useUsageData.ts     data fetch  src-tauri/src/main.rs     entry point
+src/hooks/useWindowDock.ts    edge dock
+src/types/index.ts   shared TS types
+src/utils/format.ts  formatting helpers
+src/utils/log.ts     frontend logging
 ```
 
 - Window: 290×156, transparent, always-on-top, no decorations, not resizable, skip taskbar, no shadow, starts hidden (`visible: false` in `tauri.conf.json`), shown by JS on mount.
@@ -32,8 +36,8 @@ npm run dev              # Vite dev server on port 1420
 # Typecheck + build frontend
 npm run build            # tsc && vite build
 
-# Rust tests only
-cargo test -p hovermeter  # from src-tauri/ or repo root
+# Rust tests (CI only — WSL lacks GTK dev libraries)
+# cargo test -p hovermeter  # only works in CI or Windows
 
 # Build release binary
 npm run tauri build
@@ -106,7 +110,7 @@ Whenever you finish a batch of source-code changes in this project (especially f
 
 Recommended flow:
 
-1. Perform the code edits and verify them (e.g., `npx tsc --noEmit`, `cargo test`, or the checks the user requested).
+1. Perform the code edits and verify them (e.g., `npx tsc --noEmit` for frontend typecheck; Rust tests only run on Windows/CI, not WSL).
 2. Run the sync + Windows build commands from the **Manual local build** section above.
 3. If `hovermeter.exe` is already running and blocks the build, kill it first, then retry.
 4. Report the produced artifact paths and sizes.
@@ -121,7 +125,7 @@ Recommended flow:
 - **No frontend test framework.** Only Rust unit tests exist (`cargo test`).
 - **`npm run build` runs `tsc` first** — type errors block the build.
 - **CI/CD**: `.github/workflows/ci.yml` (typecheck + Rust tests on push/PR), `.github/workflows/release.yml` (build + publish on `v*` tags).
-- **`src/App.css` is dead code** — not imported anywhere. `main.tsx` only imports `styles.css`. `src/assets/react.svg` is also a template leftover.
+- **WSL cannot run `cargo test`** — missing GTK/webkit2gtk system libraries. Rust tests are verified via CI (`ci.yml` installs deps via `apt`).
 - **`index.html` lang** set to `zh-CN`, all UI is in Chinese.
 - **Tauri dev uses fixed port 1420** with `strictPort: true`. If port is occupied, it fails.
 - **Window close is intercepted** — close hides to tray instead of quitting. Quit via tray menu.

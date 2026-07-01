@@ -1,3 +1,11 @@
+/**
+ * useWindowDock Hook — 屏幕边缘停靠
+ *
+ * 当窗口被拖到屏幕边缘附近时自动吸附停靠，
+ * 鼠标悬停时滑出完整窗口，离开时仅保留 6px 可见条。
+ * 支持左/右/上/下四个方向。
+ */
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { currentMonitor } from "@tauri-apps/api/window";
@@ -5,12 +13,15 @@ import { listen } from "@tauri-apps/api/event";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import type { PhysicalSize } from "@tauri-apps/api/dpi";
 
+/** 停靠边缘方向 */
 export type DockEdge = "left" | "right" | "top" | "bottom" | null;
 
+/** 停靠状态 */
 export interface DockState {
   edge: DockEdge;
 }
 
+/** 显示器边界信息 */
 interface MonitorBounds {
   x: number;
   y: number;
@@ -18,13 +29,40 @@ interface MonitorBounds {
   height: number;
 }
 
+/** 吸附触发阈值（px） */
 const DOCK_THRESHOLD = 20;
+/** 拖离解除停靠阈值（px） */
 const UNDOCK_THRESHOLD = 30;
+/** 滑动动画总时长（ms） */
 const SLIDE_DURATION_MS = 180;
+/** 滑动动画帧数 */
 const SLIDE_STEPS = 12;
+/** 拖拽结束后重新应用停靠的延迟（ms） */
 const DRAG_END_DELAY_MS = 300;
+/** 隐藏时保留的可见条宽度（px） */
 const VISIBLE_STRIP = 6;
 
+/**
+ * 从 Tauri Monitor 对象提取统一的显示器边界。
+ * 在 hook 内多处重复使用，减少样板代码。
+ */
+async function getMonitorBounds(): Promise<MonitorBounds | null> {
+  const monitor = await currentMonitor();
+  if (!monitor) return null;
+  return {
+    x: monitor.position.x,
+    y: monitor.position.y,
+    width: monitor.size.width,
+    height: monitor.size.height,
+  };
+}
+
+/**
+ * 屏幕边缘停靠 Hook。
+ *
+ * @param hovered - 鼠标是否悬停在窗口上（控制显示/隐藏）
+ * @returns 停靠状态、隐藏前等待函数、强制隐藏到停靠位置函数
+ */
 export function useWindowDock(hovered: boolean) {
   const [dockState, setDockState] = useState<DockState>({ edge: null });
   const dockRef = useRef<DockState>({ edge: null });
@@ -47,21 +85,22 @@ export function useWindowDock(hovered: boolean) {
 
   hoveredRef.current = hovered;
 
+  /** 更新停靠状态（同时更新 ref 和 React state） */
   const setDock = useCallback((edge: DockEdge) => {
     dockRef.current = { edge };
     setDockState({ edge });
   }, []);
 
+  /**
+   * 执行缓动滑动动画，将窗口从当前位置平滑移动到目标位置。
+   *
+   * 使用 ease-out 曲线（quadratic），分 SLIDE_STEPS 帧完成。
+   * 如果用户开始拖拽或新的滑动请求到来，当前动画会中止。
+   */
   const slideTo = useCallback(async (targetX: number, targetY: number) => {
-    // Each slide call gets a new generation. If a later slide is requested
-    // (or the user starts dragging), the generation changes and this loop
-    // aborts so the window isn't fighting the user's drag.
     const generation = ++slideGenerationRef.current;
 
     if (slidingRef.current) {
-      // A slide is already running; the generation bump will cause it to abort
-      // and the caller (applyDockVisibility) will queue a new slide via
-      // pendingApplyRef if needed.
       return;
     }
 
@@ -74,7 +113,6 @@ export function useWindowDock(hovered: boolean) {
       const stepMs = SLIDE_DURATION_MS / SLIDE_STEPS;
 
       for (let i = 1; i <= SLIDE_STEPS; i++) {
-        // Abort if a newer slide was requested or the user started dragging.
         if (generation !== slideGenerationRef.current || isDraggingRef.current) {
           return;
         }
@@ -91,23 +129,15 @@ export function useWindowDock(hovered: boolean) {
     } finally {
       slidingRef.current = false;
 
-      // If hover (or drag) changed while we were sliding, re-apply the
-      // visibility for the current dock edge so the window doesn't get stuck
-      // in the wrong state.
       if (pendingApplyRef.current) {
         pendingApplyRef.current = false;
         const edge = dockRef.current.edge;
         if (edge) {
           try {
-            const monitor = await currentMonitor();
-            if (!monitor) return;
-            const bounds: MonitorBounds = {
-              x: monitor.position.x,
-              y: monitor.position.y,
-              width: monitor.size.width,
-              height: monitor.size.height,
-            };
-            await applyDockVisibilityRef.current?.(edge, bounds);
+            const bounds = await getMonitorBounds();
+            if (bounds) {
+              await applyDockVisibilityRef.current?.(edge, bounds);
+            }
           } catch {
             // ignore
           }
@@ -116,6 +146,12 @@ export function useWindowDock(hovered: boolean) {
     }
   }, []);
 
+  /**
+   * 计算指定边缘的可见/隐藏坐标。
+   *
+   * 可见位置：窗口完全在屏幕内
+   * 隐藏位置：仅保留 VISIBLE_STRIP 像素可见
+   */
   const getDockedPositions = async (
     edge: DockEdge,
     bounds: MonitorBounds,
@@ -153,10 +189,15 @@ export function useWindowDock(hovered: boolean) {
     }
   };
 
+  /**
+   * 应用停靠可见性：根据 hover 状态决定滑动到可见还是隐藏位置。
+   *
+   * - 用户拖拽中不干预
+   * - 滑动动画进行中则标记待应用，动画结束后自动重试
+   * - forceVisible 用于系统托盘"显示面板"事件
+   */
   const applyDockVisibility = useCallback(
     async (edge: DockEdge, bounds: MonitorBounds, forceVisible = false) => {
-      // Don't fight an active user drag; the drag-end timer will re-apply
-      // visibility once the user releases the window.
       if (isDraggingRef.current) return;
 
       if (slidingRef.current) {
@@ -176,6 +217,9 @@ export function useWindowDock(hovered: boolean) {
 
   applyDockVisibilityRef.current = applyDockVisibility;
 
+  /**
+   * 显示窗口：停靠状态下滑到可见位置，非停靠状态下确保窗口在当前显示器内。
+   */
   const revealWindow = useCallback(async () => {
     const win = winRef.current;
     if (slidingRef.current) return;
@@ -183,31 +227,19 @@ export function useWindowDock(hovered: boolean) {
     const edge = dockRef.current.edge;
     if (edge) {
       try {
-        const monitor = await currentMonitor();
-        if (!monitor) return;
-        const bounds: MonitorBounds = {
-          x: monitor.position.x,
-          y: monitor.position.y,
-          width: monitor.size.width,
-          height: monitor.size.height,
-        };
-        await applyDockVisibility(edge, bounds);
+        const bounds = await getMonitorBounds();
+        if (bounds) {
+          await applyDockVisibility(edge, bounds);
+        }
       } catch {
         // ignore
       }
       return;
     }
 
-    // Not docked: make sure the window is actually visible on the current monitor.
     try {
-      const monitor = await currentMonitor();
-      if (!monitor) return;
-      const bounds: MonitorBounds = {
-        x: monitor.position.x,
-        y: monitor.position.y,
-        width: monitor.size.width,
-        height: monitor.size.height,
-      };
+      const bounds = await getMonitorBounds();
+      if (!bounds) return;
 
       const pos = await win.outerPosition();
       const ww = winSizeRef.current.width;
@@ -236,6 +268,12 @@ export function useWindowDock(hovered: boolean) {
     }
   }, [applyDockVisibility]);
 
+  /**
+   * 检测窗口是否在屏幕边缘附近，若是则触发停靠。
+   *
+   * 优先处理已完全在屏幕外的窗口（如从旧版本保存的位置恢复），
+   * 然后按四方向距离判断最近的边缘。
+   */
   const checkAndDock = useCallback(async () => {
     if (slidingRef.current) return;
 
@@ -244,22 +282,13 @@ export function useWindowDock(hovered: boolean) {
     const y = pos.y;
 
     try {
-      const monitor = await currentMonitor();
-      if (!monitor) return;
-
-      const bounds: MonitorBounds = {
-        x: monitor.position.x,
-        y: monitor.position.y,
-        width: monitor.size.width,
-        height: monitor.size.height,
-      };
+      const bounds = await getMonitorBounds();
+      if (!bounds) return;
 
       const ww = winSizeRef.current.width;
       const wh = winSizeRef.current.height;
 
-      // First detect windows that are already off-screen (e.g. saved state from a
-      // previous version). In that case snap to the corresponding edge and use the
-      // fully-visible edge position as the saved undock position.
+      // 检测窗口是否完全在屏幕外
       const offLeft = x < bounds.x;
       const offRight = x + ww > bounds.x + bounds.width;
       const offTop = y < bounds.y;
@@ -329,6 +358,15 @@ export function useWindowDock(hovered: boolean) {
     }
   }, [applyDockVisibility, setDock]);
 
+  /**
+   * 初始化：获取窗口尺寸，注册移动/缩放/焦点/显示事件监听。
+   *
+   * - 移动事件：调度拖拽结束计时器 + 停靠检测
+   * - 缩放事件：更新缓存的窗口尺寸
+   * - 失焦事件：停靠状态下隐藏窗口
+   * - show-widget 事件：从托盘恢复显示
+   * - mousedown 事件：检测拖拽开始
+   */
   useEffect(() => {
     const win = winRef.current;
 
@@ -344,10 +382,12 @@ export function useWindowDock(hovered: boolean) {
         /* ignore */
       });
 
+    /**
+     * 标记拖拽开始，中止滑动动画。
+     * DRAG_END_DELAY_MS 后重新应用停靠可见性。
+     */
     const scheduleDragEnd = () => {
       isDraggingRef.current = true;
-      // Abort any in-progress slide so the user's drag isn't fighting
-      // programmatic setPosition calls.
       slideGenerationRef.current += 1;
       if (dragEndTimerRef.current) {
         clearTimeout(dragEndTimerRef.current);
@@ -358,15 +398,10 @@ export function useWindowDock(hovered: boolean) {
         if (!edge) return;
 
         try {
-          const monitor = await currentMonitor();
-          if (!monitor) return;
-          const bounds: MonitorBounds = {
-            x: monitor.position.x,
-            y: monitor.position.y,
-            width: monitor.size.width,
-            height: monitor.size.height,
-          };
-          await applyDockVisibility(edge, bounds);
+          const bounds = await getMonitorBounds();
+          if (bounds) {
+            await applyDockVisibility(edge, bounds);
+          }
         } catch {
           // ignore
         }
@@ -375,8 +410,6 @@ export function useWindowDock(hovered: boolean) {
 
     const unlistenMovedPromise = win.onMoved(
       (_event: { payload: PhysicalPosition }) => {
-        // Skip all move processing during slide animation to prevent
-        // drag-end timers from firing setPosition on a hidden window.
         if (slidingRef.current) return;
 
         scheduleDragEnd();
@@ -391,22 +424,13 @@ export function useWindowDock(hovered: boolean) {
             const y = pos.y;
 
             try {
-              const monitor = await currentMonitor();
-              if (!monitor) return;
-
-              const bounds: MonitorBounds = {
-                x: monitor.position.x,
-                y: monitor.position.y,
-                width: monitor.size.width,
-                height: monitor.size.height,
-              };
+              const bounds = await getMonitorBounds();
+              if (!bounds) return;
 
               const ww = winSizeRef.current.width;
               const wh = winSizeRef.current.height;
               const edge = dockRef.current.edge;
 
-              // If the user has dragged the window away from the docked edge,
-              // undock and keep the window exactly where they dragged it.
               let draggedAway = false;
               switch (edge) {
                 case "left":
@@ -448,22 +472,13 @@ export function useWindowDock(hovered: boolean) {
 
     const unlistenFocusPromise = win.onFocusChanged(
       async ({ payload: focused }: { payload: boolean }) => {
-        // Only care about losing focus — the show-widget handler and hover
-        // effect already handle revealing. Reacting to focus gain here would
-        // cause the window to pop up whenever another app closes (e.g. cmd).
         if (focused || slidingRef.current) return;
 
         const edge = dockRef.current.edge;
         if (edge && !hoveredRef.current) {
           try {
-            const monitor = await currentMonitor();
-            if (monitor) {
-              const bounds: MonitorBounds = {
-                x: monitor.position.x,
-                y: monitor.position.y,
-                width: monitor.size.width,
-                height: monitor.size.height,
-              };
+            const bounds = await getMonitorBounds();
+            if (bounds) {
               await applyDockVisibility(edge, bounds);
             }
           } catch {
@@ -483,8 +498,6 @@ export function useWindowDock(hovered: boolean) {
         // ignore
       }
 
-      // Abort any in-progress slide (likely heading for hidden position
-      // because the onFocusChanged handler raced in first).
       slideGenerationRef.current += 1;
       while (slidingRef.current) {
         await new Promise((r) => setTimeout(r, 10));
@@ -492,25 +505,13 @@ export function useWindowDock(hovered: boolean) {
 
       const edge = dockRef.current.edge;
       if (edge) {
-        // Stay docked — just slide to the fully-visible position.
-        // The normal hover effect will handle hiding when the user
-        // clicks away.
         try {
-          const monitor = await currentMonitor();
-          if (monitor) {
-            const bounds: MonitorBounds = {
-              x: monitor.position.x,
-              y: monitor.position.y,
-              width: monitor.size.width,
-              height: monitor.size.height,
-            };
+          const bounds = await getMonitorBounds();
+          if (bounds) {
             const positions = await getDockedPositions(edge, bounds);
             await win.setPosition(
               new PhysicalPosition(positions.visible.x, positions.visible.y),
             );
-            // setPosition triggers onMoved, which schedules a drag-end
-            // timer that would slide us back to hidden after 300ms.
-            // Clear it so we stay visible until the user clicks away.
             if (dragEndTimerRef.current) {
               clearTimeout(dragEndTimerRef.current);
               dragEndTimerRef.current = null;
@@ -521,16 +522,9 @@ export function useWindowDock(hovered: boolean) {
           // ignore
         }
       } else {
-        // Not docked: just make sure the window is on the current monitor.
         try {
-          const monitor = await currentMonitor();
-          if (monitor) {
-            const bounds: MonitorBounds = {
-              x: monitor.position.x,
-              y: monitor.position.y,
-              width: monitor.size.width,
-              height: monitor.size.height,
-            };
+          const bounds = await getMonitorBounds();
+          if (bounds) {
             const pos = await win.outerPosition();
             const ww = winSizeRef.current.width;
             const wh = winSizeRef.current.height;
@@ -560,12 +554,9 @@ export function useWindowDock(hovered: boolean) {
       }
     });
 
-    // Detect drag starts immediately (even during a slide animation) so we can
-    // abort programmatic movement and avoid fighting the user's drag.
+    /** 在拖拽区域按下鼠标时标记拖拽开始 */
     const handleMouseDown = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      // Ignore clicks on interactive controls; the title-bar buttons live inside
-      // the drag region and should not start a drag.
       if (target.closest("button, a, input, textarea, select")) return;
       if (target.closest("[data-tauri-drag-region]")) {
         scheduleDragEnd();
@@ -584,7 +575,7 @@ export function useWindowDock(hovered: boolean) {
     };
   }, [applyDockVisibility, checkAndDock, revealWindow, setDock]);
 
-  // On startup, recover windows that were saved in an off-screen position.
+  /** 启动时恢复可能保存在屏幕外的窗口位置 */
   useEffect(() => {
     const timer = setTimeout(() => {
       checkAndDock();
@@ -592,21 +583,15 @@ export function useWindowDock(hovered: boolean) {
     return () => clearTimeout(timer);
   }, [checkAndDock]);
 
-  // React to hover changes while already docked.
+  /** hover 状态变化时重新应用停靠可见性 */
   useEffect(() => {
     const edge = dockRef.current.edge;
     if (!edge) return;
 
     let cancelled = false;
-    currentMonitor()
-      .then((monitor) => {
-        if (!monitor || cancelled) return;
-        const bounds: MonitorBounds = {
-          x: monitor.position.x,
-          y: monitor.position.y,
-          width: monitor.size.width,
-          height: monitor.size.height,
-        };
+    getMonitorBounds()
+      .then((bounds) => {
+        if (!bounds || cancelled) return;
         return applyDockVisibility(edge, bounds);
       })
       .catch(() => {
@@ -618,10 +603,11 @@ export function useWindowDock(hovered: boolean) {
     };
   }, [hovered, applyDockVisibility]);
 
+  /**
+   * 隐藏前准备工作：等待滑动动画完成，清除定时器。
+   * 防止在 setPosition 调用期间隐藏窗口导致 WebView2 无响应。
+   */
   const prepareForHide = useCallback(async () => {
-    // Wait for any in-flight slide animation to finish before the caller hides
-    // the window. Hiding while setPosition is being called can make WebView2 on
-    // Windows become unresponsive.
     while (slidingRef.current) {
       await new Promise((r) => setTimeout(r, 30));
     }
@@ -635,21 +621,22 @@ export function useWindowDock(hovered: boolean) {
     }
   }, []);
 
+  /**
+   * 强制隐藏到停靠位置。
+   *
+   * 已停靠窗口：直接应用隐藏可见性
+   * 未停靠窗口：吸附到最近的屏幕边缘后隐藏
+   */
   const forceHideToDock = useCallback(async () => {
     if (slidingRef.current) return;
 
     const edge = dockRef.current.edge;
     if (edge) {
       try {
-        const monitor = await currentMonitor();
-        if (!monitor) return;
-        const bounds: MonitorBounds = {
-          x: monitor.position.x,
-          y: monitor.position.y,
-          width: monitor.size.width,
-          height: monitor.size.height,
-        };
-        await applyDockVisibility(edge, bounds);
+        const bounds = await getMonitorBounds();
+        if (bounds) {
+          await applyDockVisibility(edge, bounds);
+        }
       } catch {
         // ignore
       }
@@ -658,15 +645,8 @@ export function useWindowDock(hovered: boolean) {
 
     try {
       const pos = await winRef.current.outerPosition();
-      const monitor = await currentMonitor();
-      if (!monitor) return;
-
-      const bounds: MonitorBounds = {
-        x: monitor.position.x,
-        y: monitor.position.y,
-        width: monitor.size.width,
-        height: monitor.size.height,
-      };
+      const bounds = await getMonitorBounds();
+      if (!bounds) return;
 
       const ww = winSizeRef.current.width;
       const wh = winSizeRef.current.height;

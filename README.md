@@ -1,6 +1,6 @@
 # HoverMeter
 
-基于 Tauri v2 的轻量桌面悬浮组件，实时显示**火山引擎 coding plan**用量和 **DeepSeek API** 余额 —— 290×156 窗口。
+基于 Tauri v2 的轻量桌面悬浮组件，实时显示火山引擎 coding plan 用量和 DeepSeek API 余额。
 
 ## 功能
 
@@ -15,7 +15,7 @@
 
 ## 效果截图
 
-![alt text](image.png)![alt text](image-1.png)
+![alt text](image-2.png)![alt text](image-3.png)
 
 ## 技术栈
 
@@ -75,7 +75,8 @@ arkcli auth status
 |---------|---------|-------------|
 | DeepSeek API Key | （空） | 上一步获取的 API 密钥 |
 | 刷新间隔 | 5 分钟 | 数据轮询间隔（最小 1 分钟） |
-| 透明度 | 0.85 | 组件透明度（0.5–1.0） |
+| 不透明度 | 0.85 | 组件透明度（0.5–1.0） |
+| 开机自启 | 否 | 是否开机自启 |
 
 点击「Save」后组件自动开始拉取数据。
 
