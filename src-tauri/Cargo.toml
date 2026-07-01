@@ -7,7 +7,7 @@ edition = "2021"
 
 [lib]
 name = "hovermeter_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+crate-type = ["cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -17,7 +17,6 @@ tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-window-state = "2"
-tauri-plugin-positioner = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-log = { version = "2", features = ["colored"] }
 serde = { version = "1", features = ["derive"] }
@@ -25,3 +24,10 @@ serde_json = "1"
 log = "0.4"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 tokio = { version = "1", features = ["rt"] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

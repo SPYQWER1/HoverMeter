@@ -147,7 +147,6 @@ pub fn run() {
                 .with_state_flags(tauri_plugin_window_state::StateFlags::POSITION)
                 .build(),
         )
-        .plugin(tauri_plugin_positioner::init())
         .manage(TrayToggleGuard::new())
         .on_window_event(|window, event| {
             // 关闭窗口时拦截默认行为，发送 hide-requested 事件给前端，

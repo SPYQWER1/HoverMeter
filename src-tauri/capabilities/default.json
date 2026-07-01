@@ -15,7 +15,6 @@
     "opener:default",
     "autostart:default",
     "window-state:default",
-    "positioner:default",
     "core:tray:default",
     "log:default",
     {
